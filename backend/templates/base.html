@@ -1,21 +1,84 @@
 <!doctype html>
-<title>{% block title %}{% endblock %} - Flaskr</title>
+<title>Pokemon TCG Team Generator</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit&family=Montserrat&family=Open+Sans:wght@500&display=swap" rel="stylesheet">
+<style>
+    .full-body-container {
+        text-align: center;
+        font-family: 'Montserrat', sans-serif;
+        padding: 20px;
+    }
+    .input-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 8px;
+        width: 50%;
+        margin: 10px auto;
+    }
+    .input-box input {
+        border: none;
+        outline: none;
+        font-size: 16px;
+        width: 100%;
+    }
+    .type-filter {
+        margin: 15px 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+    .type-label {
+        display: inline-block;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 14px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .type-label.selected {
+        border: 2px solid black;
+        color: white;
+        font-weight: bold;
+    }
+    .fire { background-color: #ffccbc; }
+    .water { background-color: #b3e5fc; }
+    .grass { background-color: #c8e6c9; }
+    .electric { background-color: #fff9c4; }
+    .psychic { background-color: #f8bbd0; }
+    .fighting { background-color: #d7ccc8; }
+    .dark { background-color: #b0bec5; }
+    .steel { background-color: #cfd8dc; }
+    .fairy { background-color: #fce4ec; }
+    .dragon { background-color: #d1c4e9; }
+</style>
 <body>
     <div class="full-body-container">
         <div class="top-text">
             <div class="google-colors">
-                <h1 id="google-4">4</h1>
-                <h1 id="google-3">3</h1>
-                <h1 id="google-0-1">0</h1>
-                <h1 id="google-0-2">0</h1>
+                <h1 id="google-3">TCG Card Generator</h1>
             </div>
             <div class="input-box" onclick="sendFocus()">
                 <img src="{{ url_for('static', filename='images/mag.png') }}" />
-                <input placeholder="Search for a Keeping up with the Kardashians episode" id="filter-text-val" onkeyup="filterText()">
+                <input placeholder="Enter a query on what kind of pokemon deck you want to generate" id="filter-text-val" onkeyup="filterText()">
+            </div>
+            <div class="type-filter">
+                <span class="type-label fire" onclick="toggleType('Fire', this)">Fire</span>
+                <span class="type-label water" onclick="toggleType('Water', this)">Water</span>
+                <span class="type-label grass" onclick="toggleType('Grass', this)">Grass</span>
+                <span class="type-label electric" onclick="toggleType('Electric', this)">Electric</span>
+                <span class="type-label psychic" onclick="toggleType('Psychic', this)">Psychic</span>
+                <span class="type-label fighting" onclick="toggleType('Fighting', this)">Fighting</span>
+                <span class="type-label dark" onclick="toggleType('Dark', this)">Dark</span>
+                <span class="type-label steel" onclick="toggleType('Steel', this)">Steel</span>
+                <span class="type-label fairy" onclick="toggleType('Fairy', this)">Fairy</span>
+                <span class="type-label dragon" onclick="toggleType('Dragon', this)">Dragon</span>
             </div>
         </div>
         <div id="answer-box">
@@ -24,6 +87,9 @@
     </div>
 
     <script>
+        function toggleType(type, element) {
+            element.classList.toggle("selected");
+        }
 
         function answerBoxTemplate(title,titleDesc){
             return `<div class=''>
