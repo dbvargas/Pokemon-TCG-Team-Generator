@@ -160,7 +160,7 @@ def type_cos_sim_search(selected_types):
     data = mysql_engine.query_selector(query_sql)
     data_list = list(data)
     
-    type_list = ['Colorless', 'Fire', 'Water', 'Grass', 'Electric', 'Psychic', 
+    type_list = ['Colorless', 'Fire', 'Water', 'Grass', 'Lightning', 'Psychic', 
                  'Fighting', 'Dark', 'Steel', 'Fairy', 'Dragon']
     
     query_vec = np.zeros(len(type_list))
@@ -187,7 +187,7 @@ def type_cos_sim_search(selected_types):
         types = [t.strip() for t in types]
         
         card_vec = np.zeros(len(type_list))
-        
+
         for card_type in types:
             if card_type in type_list:
                 card_vec[type_list.index(card_type)] = 1
