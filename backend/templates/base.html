@@ -125,13 +125,25 @@
     </div>
 
     <script>
+        let selectedType = null;
 
         function toggleType(type, element) {
-            element.classList.toggle("selected");
+            // Remove selection from all type buttons
+            document.querySelectorAll('.type-filter .type-label').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // If clicking the same type, deselect it
+            if (selectedType === type) {
+                selectedType = null;
+            } else {
+                // Select the new type
+                element.classList.add('selected');
+                selectedType = type;
+            }
         }
 
         function answerBoxTemplate(id, title, descr) {
-
             const [setId, cardNumber] = id.split('-');
             const imageUrl = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
             return `
@@ -145,7 +157,6 @@
         <p>${descr}</p>
         </div>`;
         }
-
 
         function sendFocus() {
             document.getElementById('filter-text-val').focus()
@@ -175,7 +186,5 @@
                     document.getElementById("answer-box").innerHTML = '<p>Error loading results</p>';
                 });
         }
-
-
     </script>
 </body>

@@ -7,7 +7,7 @@ import re
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
-os.environ['ROOT_PATH'] = os.path.abspath(os.path.join("..",os.curdir))
+os.environ['ROOT_PATH'] = os.path.abspath(os.curdir)
 
 # These are the DB credentials for your OWN MySQL
 # Don't worry about the deployment credentials, those are fixed
@@ -19,8 +19,7 @@ LOCAL_MYSQL_DATABASE = "pokemon_database"
 
 mysql_engine = MySQLDatabaseHandler(LOCAL_MYSQL_USER,LOCAL_MYSQL_USER_PASSWORD,LOCAL_MYSQL_PORT,LOCAL_MYSQL_DATABASE)
 
-# Path to init.sql file. This file can be replaced with your own file for testing on localhost, but do NOT move the init.sql file
-mysql_engine.load_file_into_db()
+mysql_engine.load_file_into_db("../allcards.sql")
 
 app = Flask(__name__)
 CORS(app)
@@ -53,13 +52,16 @@ def new_sql_search(query):
     
     query_sql = query_sql[:-4] + " limit 1000"
     
-    
-    keys = ["id","title","descr"]
+    keys = ["id", "title", "descr"]
     data = mysql_engine.query_selector(query_sql)
     
     ranked_data = []
     for i in data:
         ranked_data.append((rank_simple(re.split(r"[ -]", format_query), i), i))
+    
+    if not ranked_data:  
+        return json.dumps([])
+        
     ranked_data = sorted(ranked_data, reverse=True)
     _, final_data = zip(*ranked_data)
     return json.dumps([dict(zip(keys,[i[1][0],str(i[0]) + " " + str(i[1][7]),i[1][17]])) for i in ranked_data[:20]])
@@ -128,4 +130,4 @@ def episodes_search():
     return sql_search(text)
 
 if 'DB_NAME' not in os.environ:
-    app.run(debug=True,host="0.0.0.0",port=5000)
+    app.run(debug=True,host="0.0.0.0",port=5001)

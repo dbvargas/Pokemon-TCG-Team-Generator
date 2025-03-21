@@ -23,25 +23,48 @@ class MySQLDatabaseHandler(object):
     
     def query_executor(self,query):
         conn = self.lease_connection()
-        if type(query) == list:
-            for i in query:
-                conn.execute(i)
-        else:
-            conn.execute(query)
-        
+        try:
+            if type(query) == list:
+                for i in query:
+                    if i.strip():  
+                        conn.execute(i)
+            else:
+                if query.strip():  
+                    conn.execute(query)
+        finally:
+            conn.close()
 
     def query_selector(self,query):
         conn = self.lease_connection()
-        data = conn.execute(query)
-        return data
+        try:
+            data = conn.execute(query)
+            return data
+        finally:
+            conn.close()
 
-    def load_file_into_db(self,file_path  = None):
+    def load_file_into_db(self,file_path = None):
         if MySQLDatabaseHandler.IS_DOCKER:
             return
         if file_path is None:
             file_path = os.path.join(os.environ['ROOT_PATH'],'init.sql')
-        sql_file = open(file_path,"r")
-        sql_file_data = list(filter(lambda x:x != '',sql_file.read().split(";\n")))
-        self.query_executor(sql_file_data)
-        sql_file.close()
+        
+        with open(file_path, "r") as sql_file:
+            current_statement = ""
+            for line in sql_file:
+                if not line.strip() or line.strip().startswith('--'):
+                    continue
+                
+                line = line.replace('%', '%%')
+                
+                current_statement += line
+                
+                if line.strip().endswith(';'): 
+                    try:
+                        current_statement = current_statement.strip()
+                        if current_statement:
+                            self.query_executor(current_statement)
+                    except Exception as e:
+                        print(f"Error executing statement: {e}")
+                    finally:
+                        current_statement = ""
 
