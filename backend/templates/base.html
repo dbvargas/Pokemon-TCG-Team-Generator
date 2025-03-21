@@ -21,7 +21,7 @@
     border: 1px solid #ccc;
     padding: 10px;
     border-radius: 8px;
-    width: 50%;
+    width: 600px;
     margin: 10px auto;
   }
 
@@ -149,6 +149,27 @@
 
   .generate-button:hover {
     background-color: #3367d6;
+  }
+
+  #search-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  #type-answer-box,
+  #answer-box {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 50px;
+    margin-top: 20px;
+    padding: 10px;
+    justify-items: center;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1200px;
   }
 </style>
 
