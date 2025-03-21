@@ -93,19 +93,80 @@
     .dragon {
         background-color: #d1c4e9;
     }
+
+    button {
+        padding: 8px 16px;
+        margin: 0 5px;
+        border: none;
+        border-radius: 5px;
+        background-color: #f0f0f0;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    button:hover {
+        background-color: #ccc;
+    }
+
+    .section-toggle {
+        padding: 8px 16px;
+        margin: 0 5px;
+        border: none;
+        border-radius: 5px;
+        background-color: #e0e0e0;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s;
+    }
+
+    .section-toggle:hover {
+        background-color: #d0d0d0;
+    }
+
+    .section-toggle.selected-tab {
+        background-color: black;
+        color: white;
+    }
+
+    .generate-button {
+        background-color: #4285f4;
+        color: white;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 15px;
+        transition: background-color 0.2s ease;
+    }
+
+    .generate-button:hover {
+        background-color: #3367d6;
+    }
 </style>
 
 <body>
     <div class="full-body-container">
-        <div class="top-text">
-            <div class="google-colors">
-                <h1 id="google-3">TCG Card Generator</h1>
-            </div>
+        <div class="google-colors">
+            <h1 id="google-3">TCG Card Generator</h1>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <button class="section-toggle selected-tab" id="search-btn" onclick="showSection('search')">Search</button>
+            <button class="section-toggle" id="build-btn" onclick="showSection('build')">Build Deck</button>
+        </div>
+
+        <div id="search-section">
             <div class="input-box" onclick="sendFocus()">
                 <img src="{{ url_for('static', filename='images/mag.png') }}" />
                 <input placeholder="Enter a query on what kind of pokemon deck you want to generate"
                     id="filter-text-val" onkeyup="filterText()">
             </div>
+            <div id="answer-box"></div>
+        </div>
+
+        <div id="build-section" style="display: none;">
             <div class="type-filter">
                 <span class="type-label fire" onclick="toggleType('Fire', this)">Fire</span>
                 <span class="type-label water" onclick="toggleType('Water', this)">Water</span>
@@ -118,34 +179,15 @@
                 <span class="type-label fairy" onclick="toggleType('Fairy', this)">Fairy</span>
                 <span class="type-label dragon" onclick="toggleType('Dragon', this)">Dragon</span>
             </div>
-        </div>
-        <div id="answer-box">
 
+            <button class="generate-button" onclick="generateDeck()">Generate</button>
         </div>
     </div>
 
     <script>
-
         function toggleType(type, element) {
             element.classList.toggle("selected");
         }
-
-        function answerBoxTemplate(id, title, descr) {
-
-            const [setId, cardNumber] = id.split('-');
-            const imageUrl = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
-            return `
-        <div class='card-result'>
-        <img
-        src="${imageUrl}"
-        alt="${title}"
-        onerror="this.onerror=null; this.src='fallback-image.png'; console.log('Error loading image for:', '${title}')"
-        >
-        <h3>${title}</h3>
-        <p>${descr}</p>
-        </div>`;
-        }
-
 
         function sendFocus() {
             document.getElementById('filter-text-val').focus()
@@ -155,25 +197,57 @@
             console.log("filterText function called");
             const answerBox = document.getElementById("answer-box");
             answerBox.innerHTML = "";
-            console.log(document.getElementById("filter-text-val").value);
+            const title = document.getElementById("filter-text-val").value;
 
-            fetch("/episodes?" + new URLSearchParams({ title: document.getElementById("filter-text-val").value }).toString())
-                .then((response) => response.json())
-                .then((data) => {
-                    console.log("Data received:", data);
+            fetch("/episodes?" + new URLSearchParams({ title }).toString())
+                .then(response => response.json())
+                .then(data => {
                     if (data && data.length > 0) {
                         data.forEach(row => {
-                            console.log("Processing row:", row);
                             let tempDiv = document.createElement("div");
                             tempDiv.innerHTML = answerBoxTemplate(row.id, row.title, row.descr);
                             answerBox.appendChild(tempDiv);
-                        })
+                        });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    document.getElementById("answer-box").innerHTML = '<p>Error loading results</p>';
+                    answerBox.innerHTML = '<p>Error loading results</p>';
                 });
+        }
+
+        function answerBoxTemplate(id, title, descr) {
+            const [setId, cardNumber] = id.split('-');
+            const imageUrl = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
+            return `
+                <div class='card-result'>
+                    <img src="${imageUrl}" alt="${title}" onerror="this.onerror=null; this.src='fallback-image.png'">
+                    <h3>${title}</h3>
+                    <p>${descr}</p>
+                </div>`;
+        }
+
+        function showSection(section) {
+            const searchSection = document.getElementById("search-section");
+            const buildSection = document.getElementById("build-section");
+            const searchBtn = document.getElementById("search-btn");
+            const buildBtn = document.getElementById("build-btn");
+
+            if (section === "search") {
+                searchSection.style.display = "block";
+                buildSection.style.display = "none";
+                searchBtn.classList.add("selected-tab");
+                buildBtn.classList.remove("selected-tab");
+            } else {
+                searchSection.style.display = "none";
+                buildSection.style.display = "block";
+                buildBtn.classList.add("selected-tab");
+                searchBtn.classList.remove("selected-tab");
+            }
+        }
+
+        function generateDeck() {
+            // implement later
         }
 
 
