@@ -161,7 +161,7 @@ def type_cos_sim_search(selected_types):
     data_list = list(data)
     
     type_list = ['Colorless', 'Fire', 'Water', 'Grass', 'Lightning', 'Psychic', 
-                 'Fighting', 'Darkness', 'Steel', 'Fairy', 'Dragon']
+                 'Fighting', 'Darkness', 'Metal', 'Fairy', 'Dragon']
     
     query_vec = np.zeros(len(type_list))
 
