@@ -19,3 +19,5 @@ build/
 helpers/*
 
 backend/env/*
+myenv/
+.env
