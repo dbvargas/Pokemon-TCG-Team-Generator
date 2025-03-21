@@ -53,7 +53,6 @@ def new_sql_search(query):
     
     query_sql = query_sql[:-4] + " limit 1000"
     
-    
     keys = ["id","title","descr"]
     data = mysql_engine.query_selector(query_sql)
     
@@ -61,8 +60,37 @@ def new_sql_search(query):
     for i in data:
         ranked_data.append((rank_simple(re.split(r"[ -]", format_query), i), i))
     ranked_data = sorted(ranked_data, reverse=True)
-    _, final_data = zip(*ranked_data)
+    
+    available_names = {item[1][7]: True for item in ranked_data}
+    i = 0
+    while i < len(ranked_data):
+        if available_names[ranked_data[i][1][7]]:
+            available_names[ranked_data[i][1][7]] = False
+            i+=1
+        else:
+            del ranked_data[i]
+            
+    for i in range(0, min(20, len(ranked_data))):
+        if not (ranked_data[i][1][14] is None):
+            if ranked_data[i][1][14] in [j[1][7] for j in ranked_data[:20]]:
+                continue
+            ranked_data.insert(i+1, get_prevolution(ranked_data[i][1][14], format_query))
+
     return json.dumps([dict(zip(keys,[i[1][0],str(i[0]) + " " + str(i[1][7]),i[1][17]])) for i in ranked_data[:20]])
+
+def get_prevolution(name, format_query):
+    name = name.replace("'", "\\'")
+    query_sql = f"""SELECT * FROM allcards WHERE LOWER( name ) = '{name.lower()}' limit 50"""
+    data = mysql_engine.query_selector(query_sql)
+    ranked_data = []
+    for i in data:
+        ranked_data.append((rank_simple(re.split(r"[ -]", format_query), i), i))
+    ranked_data = sorted(ranked_data, reverse=True)
+    try:
+        return ranked_data[0]
+    except IndexError:
+        raise IndexError(name)
+    
 
 def rank_simple(query: list, card: list):
     name_val = simple_jaccard(re.split(r"[ -]", card[7].lower()), query)
