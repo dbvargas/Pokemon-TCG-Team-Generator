@@ -5,6 +5,7 @@ from flask_cors import CORS
 from helpers.MySQLDatabaseHandler import MySQLDatabaseHandler
 import re
 from dotenv import load_dotenv
+import numpy as np
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -146,6 +147,69 @@ def simple_jaccard(list1, list2):
     words2 = set(list2)
     return float(len(words1.intersection(words2))) / len(words1.union(words2))
 
+def cos_similarity(vector1, vector2):
+    numerator = np.dot(vector1, vector2)
+    denominator = np.linalg.norm(vector1) * np.linalg.norm(vector2)
+    if denominator == 0:
+        return 0.0
+    else:
+        return numerator / denominator
+    
+def type_cos_sim_search(selected_types):
+    query_sql = "SELECT * FROM allcards"
+    data = mysql_engine.query_selector(query_sql)
+    data_list = list(data)
+    
+    type_list = ['Colorless', 'Fire', 'Water', 'Grass', 'Electric', 'Psychic', 
+                 'Fighting', 'Dark', 'Steel', 'Fairy', 'Dragon']
+    
+    query_vec = np.zeros(len(type_list))
+
+    for type_name in selected_types:
+        if type_name in type_list:
+            query_vec[type_list.index(type_name)] = 1
+    
+    ranked_data = []
+    
+    for row in data_list:
+        card_id = row[0]
+        name = row[7]
+        supertype = row[10] 
+        types_str = row[9] 
+        
+        if supertype not in ['Pokemon', 'Pokémon']:
+            continue
+        
+        if not types_str:
+            continue
+            
+        types = types_str.strip('[]').replace("'", "").split(',')
+        types = [t.strip() for t in types]
+        
+        card_vec = np.zeros(len(type_list))
+        
+        for card_type in types:
+            if card_type in type_list:
+                card_vec[type_list.index(card_type)] = 1
+
+        score = cos_similarity(query_vec, card_vec)
+        
+        if score > 0:
+            ranked_data.append((score, card_id, name))
+    
+    ranked_data.sort(reverse=True)
+    
+    result = json.dumps([
+        {
+            "id": card_id,
+            "title": name,
+            "descr": f"Type Match Score: {score:.3f}"
+        }
+        for score, card_id, name in ranked_data[:20]
+    ])
+    
+    return result
+
 
 @app.route("/")
 def home():
@@ -155,6 +219,11 @@ def home():
 def episodes_search():
     text = request.args.get("title")
     return sql_search(text)
+
+@app.route("/type_search")
+def type_search():
+    selected_types = request.args.getlist('types[]')
+    return type_cos_sim_search(selected_types)
 
 if 'DB_NAME' not in os.environ:
     app.run(debug=True,host="0.0.0.0",port=5000)

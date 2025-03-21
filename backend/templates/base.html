@@ -1,255 +1,340 @@
-<!doctype html>
+<!DOCTYPE html>
 <title>Pokemon TCG Team Generator</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit&family=Montserrat&family=Open+Sans:wght@500&display=swap"
-    rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Kanit&family=Montserrat&family=Open+Sans:wght@500&display=swap"
+  rel="stylesheet"
+/>
 <style>
-    .full-body-container {
-        text-align: center;
-        font-family: 'Montserrat', sans-serif;
-        padding: 20px;
-    }
+  .full-body-container {
+    text-align: center;
+    font-family: "Montserrat", sans-serif;
+    padding: 20px;
+  }
 
-    .input-box {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        border: 1px solid #ccc;
-        padding: 10px;
-        border-radius: 8px;
-        width: 50%;
-        margin: 10px auto;
-    }
+  .input-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 8px;
+    width: 50%;
+    margin: 10px auto;
+  }
 
-    .input-box input {
-        border: none;
-        outline: none;
-        font-size: 16px;
-        width: 100%;
-    }
+  .input-box input {
+    border: none;
+    outline: none;
+    font-size: 16px;
+    width: 100%;
+  }
 
-    .type-filter {
-        margin: 15px 0;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 8px;
-    }
+  .type-filter {
+    margin: 15px 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
 
-    .type-label {
-        display: inline-block;
-        padding: 8px 15px;
-        border-radius: 20px;
-        font-size: 14px;
-        cursor: pointer;
-        border: 2px solid transparent;
-        transition: all 0.2s;
-    }
+  .type-label {
+    display: inline-block;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
 
-    .type-label.selected {
-        border: 2px solid black;
-        color: white;
-        font-weight: bold;
-    }
+  .type-label.selected {
+    border: 2px solid black;
+    color: white;
+    font-weight: bold;
+  }
 
-    .fire {
-        background-color: #ffccbc;
-    }
+  .colorless {
+    background-color: #f1f1f1;
+  }
 
-    .water {
-        background-color: #b3e5fc;
-    }
+  .fire {
+    background-color: #ffccbc;
+  }
 
-    .grass {
-        background-color: #c8e6c9;
-    }
+  .water {
+    background-color: #b3e5fc;
+  }
 
-    .electric {
-        background-color: #fff9c4;
-    }
+  .grass {
+    background-color: #c8e6c9;
+  }
 
-    .psychic {
-        background-color: #f8bbd0;
-    }
+  .electric {
+    background-color: #fff9c4;
+  }
 
-    .fighting {
-        background-color: #d7ccc8;
-    }
+  .psychic {
+    background-color: #f8bbd0;
+  }
 
-    .dark {
-        background-color: #b0bec5;
-    }
+  .fighting {
+    background-color: #d7ccc8;
+  }
 
-    .steel {
-        background-color: #cfd8dc;
-    }
+  .dark {
+    background-color: #b0bec5;
+  }
 
-    .fairy {
-        background-color: #fce4ec;
-    }
+  .steel {
+    background-color: #cfd8dc;
+  }
 
-    .dragon {
-        background-color: #d1c4e9;
-    }
+  .fairy {
+    background-color: #fce4ec;
+  }
 
-    button {
-        padding: 8px 16px;
-        margin: 0 5px;
-        border: none;
-        border-radius: 5px;
-        background-color: #f0f0f0;
-        cursor: pointer;
-        font-weight: bold;
-    }
+  .dragon {
+    background-color: #d1c4e9;
+  }
 
-    button:hover {
-        background-color: #ccc;
-    }
+  button {
+    padding: 8px 16px;
+    margin: 0 5px;
+    border: none;
+    border-radius: 5px;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    font-weight: bold;
+  }
 
-    .section-toggle {
-        padding: 8px 16px;
-        margin: 0 5px;
-        border: none;
-        border-radius: 5px;
-        background-color: #e0e0e0;
-        cursor: pointer;
-        font-weight: bold;
-        transition: background-color 0.2s;
-    }
+  button:hover {
+    background-color: #ccc;
+  }
 
-    .section-toggle:hover {
-        background-color: #d0d0d0;
-    }
+  .section-toggle {
+    padding: 8px 16px;
+    margin: 0 5px;
+    border: none;
+    border-radius: 5px;
+    background-color: #e0e0e0;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+  }
 
-    .section-toggle.selected-tab {
-        background-color: black;
-        color: white;
-    }
+  .section-toggle:hover {
+    background-color: #d0d0d0;
+  }
 
-    .generate-button {
-        background-color: #4285f4;
-        color: white;
-        padding: 10px 20px;
-        font-size: 16px;
-        font-weight: bold;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 15px;
-        transition: background-color 0.2s ease;
-    }
+  .section-toggle.selected-tab {
+    background-color: black;
+    color: white;
+  }
 
-    .generate-button:hover {
-        background-color: #3367d6;
-    }
+  .generate-button {
+    background-color: #4285f4;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background-color 0.2s ease;
+  }
+
+  .generate-button:hover {
+    background-color: #3367d6;
+  }
 </style>
 
 <body>
-    <div class="full-body-container">
-        <div class="google-colors">
-            <h1 id="google-3">TCG Card Generator</h1>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-            <button class="section-toggle selected-tab" id="search-btn" onclick="showSection('search')">Search</button>
-            <button class="section-toggle" id="build-btn" onclick="showSection('build')">Build Deck</button>
-        </div>
-
-        <div id="search-section">
-            <div class="input-box" onclick="sendFocus()">
-                <img src="{{ url_for('static', filename='images/mag.png') }}" />
-                <input placeholder="Enter a query on what kind of pokemon deck you want to generate"
-                    id="filter-text-val" onkeyup="filterText()">
-            </div>
-            <div id="answer-box"></div>
-        </div>
-
-        <div id="build-section" style="display: none;">
-            <div class="type-filter">
-                <span class="type-label fire" onclick="toggleType('Fire', this)">Fire</span>
-                <span class="type-label water" onclick="toggleType('Water', this)">Water</span>
-                <span class="type-label grass" onclick="toggleType('Grass', this)">Grass</span>
-                <span class="type-label electric" onclick="toggleType('Electric', this)">Electric</span>
-                <span class="type-label psychic" onclick="toggleType('Psychic', this)">Psychic</span>
-                <span class="type-label fighting" onclick="toggleType('Fighting', this)">Fighting</span>
-                <span class="type-label dark" onclick="toggleType('Dark', this)">Dark</span>
-                <span class="type-label steel" onclick="toggleType('Steel', this)">Steel</span>
-                <span class="type-label fairy" onclick="toggleType('Fairy', this)">Fairy</span>
-                <span class="type-label dragon" onclick="toggleType('Dragon', this)">Dragon</span>
-            </div>
-
-            <button class="generate-button" onclick="generateDeck()">Generate</button>
-        </div>
+  <div class="full-body-container">
+    <div class="google-colors">
+      <h1 id="google-3">TCG Card Generator</h1>
     </div>
 
-    <script>
-        function toggleType(type, element) {
-            element.classList.toggle("selected");
-        }
+    <div style="margin-bottom: 20px">
+      <button
+        class="section-toggle selected-tab"
+        id="search-btn"
+        onclick="showSection('search')"
+      >
+        Search
+      </button>
+      <button
+        class="section-toggle"
+        id="build-btn"
+        onclick="showSection('build')"
+      >
+        Build Deck
+      </button>
+    </div>
 
-        function sendFocus() {
-            document.getElementById('filter-text-val').focus()
-        }
+    <div id="search-section">
+      <div class="input-box" onclick="sendFocus()">
+        <img src="{{ url_for('static', filename='images/mag.png') }}" />
+        <input
+          placeholder="Enter a query on what kind of pokemon deck you want to generate"
+          id="filter-text-val"
+          onkeyup="filterText()"
+        />
+      </div>
+      <div id="answer-box"></div>
+    </div>
 
-        function filterText() {
-            console.log("filterText function called");
-            const answerBox = document.getElementById("answer-box");
-            answerBox.innerHTML = "";
-            const title = document.getElementById("filter-text-val").value;
+    <div id="build-section" style="display: none">
+      <div class="type-filter">
+        <span
+          class="type-label colorless"
+          onclick="toggleType('Colorless', this)"
+          >Colorless</span
+        >
+        <span class="type-label fire" onclick="toggleType('Fire', this)"
+          >Fire</span
+        >
+        <span class="type-label water" onclick="toggleType('Water', this)"
+          >Water</span
+        >
+        <span class="type-label grass" onclick="toggleType('Grass', this)"
+          >Grass</span
+        >
+        <span class="type-label electric" onclick="toggleType('Electric', this)"
+          >Electric</span
+        >
+        <span class="type-label psychic" onclick="toggleType('Psychic', this)"
+          >Psychic</span
+        >
+        <span class="type-label fighting" onclick="toggleType('Fighting', this)"
+          >Fighting</span
+        >
+        <span class="type-label dark" onclick="toggleType('Dark', this)"
+          >Dark</span
+        >
+        <span class="type-label steel" onclick="toggleType('Steel', this)"
+          >Steel</span
+        >
+        <span class="type-label fairy" onclick="toggleType('Fairy', this)"
+          >Fairy</span
+        >
+        <span class="type-label dragon" onclick="toggleType('Dragon', this)"
+          >Dragon</span
+        >
+      </div>
 
-            fetch("/episodes?" + new URLSearchParams({ title }).toString())
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.length > 0) {
-                        data.forEach(row => {
-                            let tempDiv = document.createElement("div");
-                            tempDiv.innerHTML = answerBoxTemplate(row.id, row.title, row.descr);
-                            answerBox.appendChild(tempDiv);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    answerBox.innerHTML = '<p>Error loading results</p>';
-                });
-        }
+      <button class="generate-button" onclick="generateDeck()">Generate</button>
+      <div id="type-answer-box"></div>
+    </div>
+  </div>
 
-        function answerBoxTemplate(id, title, descr) {
-            const [setId, cardNumber] = id.split('-');
-            const imageUrl = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
-            return `
+  <script>
+    function toggleType(type, element) {
+      element.classList.toggle("selected");
+    }
+
+    function sendFocus() {
+      document.getElementById("filter-text-val").focus();
+    }
+
+    function filterText() {
+      console.log("filterText function called");
+      const answerBox = document.getElementById("answer-box");
+      answerBox.innerHTML = "";
+      const title = document.getElementById("filter-text-val").value;
+
+      fetch("/episodes?" + new URLSearchParams({ title }).toString())
+        .then((response) => response.json())
+        .then((data) => {
+          if (data && data.length > 0) {
+            data.forEach((row) => {
+              let tempDiv = document.createElement("div");
+              tempDiv.innerHTML = answerBoxTemplate(
+                row.id,
+                row.title,
+                row.descr
+              );
+              answerBox.appendChild(tempDiv);
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          answerBox.innerHTML = "<p>Error loading results</p>";
+        });
+    }
+
+    function answerBoxTemplate(id, title, descr) {
+      const [setId, cardNumber] = id.split("-");
+      const imageUrl = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
+      return `
                 <div class='card-result'>
                     <img src="${imageUrl}" alt="${title}" onerror="this.onerror=null; this.src='fallback-image.png'">
                     <h3>${title}</h3>
                     <p>${descr}</p>
                 </div>`;
-        }
+    }
 
-        function showSection(section) {
-            const searchSection = document.getElementById("search-section");
-            const buildSection = document.getElementById("build-section");
-            const searchBtn = document.getElementById("search-btn");
-            const buildBtn = document.getElementById("build-btn");
+    function showSection(section) {
+      const searchSection = document.getElementById("search-section");
+      const buildSection = document.getElementById("build-section");
+      const searchBtn = document.getElementById("search-btn");
+      const buildBtn = document.getElementById("build-btn");
 
-            if (section === "search") {
-                searchSection.style.display = "block";
-                buildSection.style.display = "none";
-                searchBtn.classList.add("selected-tab");
-                buildBtn.classList.remove("selected-tab");
-            } else {
-                searchSection.style.display = "none";
-                buildSection.style.display = "block";
-                buildBtn.classList.add("selected-tab");
-                searchBtn.classList.remove("selected-tab");
-            }
-        }
+      if (section === "search") {
+        searchSection.style.display = "block";
+        buildSection.style.display = "none";
+        searchBtn.classList.add("selected-tab");
+        buildBtn.classList.remove("selected-tab");
+      } else {
+        searchSection.style.display = "none";
+        buildSection.style.display = "block";
+        buildBtn.classList.add("selected-tab");
+        searchBtn.classList.remove("selected-tab");
+      }
+    }
 
-        function generateDeck() {
-            // implement later
-        }
+    function generateDeck() {
+      const answerBox = document.getElementById("type-answer-box");
+      answerBox.innerHTML = "";
 
+      const selectedTypes = Array.from(
+        document.querySelectorAll(".type-label.selected")
+      ).map((el) => el.textContent.trim());
 
-    </script>
+      if (selectedTypes.length === 0) {
+        answerBox.innerHTML =
+          "<p>Please select at least one type to generate a deck</p>";
+        return;
+      }
+
+      const params = new URLSearchParams();
+      selectedTypes.forEach((type) => params.append("types[]", type));
+
+      fetch("/type_search?" + params.toString())
+        .then((response) => response.json())
+        .then((data) => {
+          if (data && data.length > 0) {
+            data.forEach((row) => {
+              let tempDiv = document.createElement("div");
+              tempDiv.innerHTML = answerBoxTemplate(
+                row.id,
+                row.title,
+                row.descr
+              );
+              answerBox.appendChild(tempDiv);
+            });
+          } else {
+            answerBox.innerHTML = "<p>No cards found for selected types</p>";
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          answerBox.innerHTML = "<p>Error generating deck</p>";
+        });
+    }
+  </script>
 </body>
