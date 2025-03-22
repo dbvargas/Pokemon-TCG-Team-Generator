@@ -78,7 +78,7 @@ def new_sql_search(query):
                 continue
             ranked_data.insert(i+1, get_prevolution(ranked_data[i][1][14], format_query))
 
-    return json.dumps([dict(zip(keys,[i[1][0],str(i[0]) + " " + str(i[1][7]),i[1][17]])) for i in ranked_data[:20]])
+    return json.dumps([dict(zip(keys,[i[1][0],str(i[1][7]),i[0]])) for i in ranked_data[:20]])
 
 def get_prevolution(name, format_query):
     name = name.replace("'", "\\'")
