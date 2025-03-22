@@ -3,10 +3,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link
-  href="https://fonts.googleapis.com/css2?family=Kanit&family=Montserrat&family=Open+Sans:wght@500&display=swap"
-  rel="stylesheet"
-/>
+<link href="https://fonts.googleapis.com/css2?family=Kanit&family=Montserrat&family=Open+Sans:wght@500&display=swap"
+  rel="stylesheet" />
 <style>
   .full-body-container {
     text-align: center;
@@ -147,6 +145,13 @@
     transition: background-color 0.2s ease;
   }
 
+  html,
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+
   .generate-button:hover {
     background-color: #3367d6;
   }
@@ -180,18 +185,10 @@
     </div>
 
     <div style="margin-bottom: 20px">
-      <button
-        class="section-toggle selected-tab"
-        id="search-btn"
-        onclick="showSection('search')"
-      >
+      <button class="section-toggle selected-tab" id="search-btn" onclick="showSection('search')">
         Search
       </button>
-      <button
-        class="section-toggle"
-        id="build-btn"
-        onclick="showSection('build')"
-      >
+      <button class="section-toggle" id="build-btn" onclick="showSection('build')">
         Build Deck
       </button>
     </div>
@@ -199,54 +196,25 @@
     <div id="search-section">
       <div class="input-box" onclick="sendFocus()">
         <img src="{{ url_for('static', filename='images/mag.png') }}" />
-        <input
-          placeholder="Enter a query on what kind of pokemon deck you want to generate"
-          id="filter-text-val"
-          onkeyup="filterText()"
-        />
+        <input placeholder="Enter a query on what kind of pokemon deck you want to generate" id="filter-text-val"
+          onkeyup="filterText()" />
       </div>
       <div id="answer-box"></div>
     </div>
 
     <div id="build-section" style="display: none">
       <div class="type-filter">
-        <span
-          class="type-label colorless"
-          onclick="toggleType('Colorless', this)"
-          >Colorless</span
-        >
-        <span class="type-label fire" onclick="toggleType('Fire', this)"
-          >Fire</span
-        >
-        <span class="type-label water" onclick="toggleType('Water', this)"
-          >Water</span
-        >
-        <span class="type-label grass" onclick="toggleType('Grass', this)"
-          >Grass</span
-        >
-        <span
-          class="type-label lightning"
-          onclick="toggleType('Lightning', this)"
-          >Lightning</span
-        >
-        <span class="type-label psychic" onclick="toggleType('Psychic', this)"
-          >Psychic</span
-        >
-        <span class="type-label fighting" onclick="toggleType('Fighting', this)"
-          >Fighting</span
-        >
-        <span class="type-label darkness" onclick="toggleType('Darkness', this)"
-          >Darkness</span
-        >
-        <span class="type-label metal" onclick="toggleType('Metal', this)"
-          >Metal</span
-        >
-        <span class="type-label fairy" onclick="toggleType('Fairy', this)"
-          >Fairy</span
-        >
-        <span class="type-label dragon" onclick="toggleType('Dragon', this)"
-          >Dragon</span
-        >
+        <span class="type-label colorless" onclick="toggleType('Colorless', this)">Colorless</span>
+        <span class="type-label fire" onclick="toggleType('Fire', this)">Fire</span>
+        <span class="type-label water" onclick="toggleType('Water', this)">Water</span>
+        <span class="type-label grass" onclick="toggleType('Grass', this)">Grass</span>
+        <span class="type-label lightning" onclick="toggleType('Lightning', this)">Lightning</span>
+        <span class="type-label psychic" onclick="toggleType('Psychic', this)">Psychic</span>
+        <span class="type-label fighting" onclick="toggleType('Fighting', this)">Fighting</span>
+        <span class="type-label darkness" onclick="toggleType('Darkness', this)">Darkness</span>
+        <span class="type-label metal" onclick="toggleType('Metal', this)">Metal</span>
+        <span class="type-label fairy" onclick="toggleType('Fairy', this)">Fairy</span>
+        <span class="type-label dragon" onclick="toggleType('Dragon', this)">Dragon</span>
       </div>
 
       <button class="generate-button" onclick="generateDeck()">Generate</button>
@@ -267,7 +235,13 @@
       console.log("filterText function called");
       const answerBox = document.getElementById("answer-box");
       answerBox.innerHTML = "";
-      const title = document.getElementById("filter-text-val").value;
+      const title = document.getElementById("filter-text-val").value.trim();
+
+
+      if (title === "") {
+        return;
+      }
+
 
       fetch("/episodes?" + new URLSearchParams({ title }).toString())
         .then((response) => response.json())
