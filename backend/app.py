@@ -6,6 +6,7 @@ from helpers.MySQLDatabaseHandler import MySQLDatabaseHandler
 import re
 from dotenv import load_dotenv
 import numpy as np
+from sqlalchemy import text
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -210,6 +211,18 @@ def type_cos_sim_search(selected_types):
     
     return result
 
+def create_deck_table():
+    query = """
+    CREATE TABLE IF NOT EXISTS decks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        cards JSON NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """
+    mysql_engine.query_executor(query)
+
+create_deck_table()
 
 @app.route("/")
 def home():
@@ -224,6 +237,67 @@ def episodes_search():
 def type_search():
     selected_types = request.args.getlist('types[]')
     return type_cos_sim_search(selected_types)
+
+@app.route("/save_deck", methods=['POST'])
+def save_deck():
+    try:
+        data = request.get_json()
+        deck_name = data.get('name', 'Untitled Deck')
+        cards = json.dumps(data.get('cards', []))
+        
+        query = text("INSERT INTO decks (name, cards) VALUES (:name, :cards)")
+        mysql_engine.query_executor(query.bindparams(name=deck_name, cards=cards))
+        
+        return json.dumps({"success": True, "message": "Deck saved successfully"})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e)}), 500
+
+@app.route("/get_decks", methods=['GET'])
+def get_decks():
+    try:
+        query = text("SELECT * FROM decks ORDER BY created_at DESC")
+        results = mysql_engine.query_selector(query)
+        decks = []
+        for row in results:
+            decks.append({
+                "id": row[0],
+                "name": row[1],
+                "cards": json.loads(row[2]),
+                "created_at": row[3].isoformat() if row[3] else None
+            })
+        return json.dumps({"success": True, "decks": decks})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e)}), 500
+
+@app.route("/export_deck/<int:deck_id>", methods=['GET'])
+def export_deck(deck_id):
+    try:
+        query = text("SELECT * FROM decks WHERE id = :deck_id")
+        results = mysql_engine.query_selector(query.bindparams(deck_id=deck_id))
+        deck = None
+        for row in results:
+            deck = {
+                "id": row[0],
+                "name": row[1],
+                "cards": json.loads(row[2]),
+                "created_at": row[3].isoformat() if row[3] else None
+            }
+        
+        if not deck:
+            return json.dumps({"success": False, "message": "Deck not found"}), 404
+            
+        return json.dumps({"success": True, "deck": deck})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e)}), 500
+
+@app.route("/delete_deck/<int:deck_id>", methods=['DELETE'])
+def delete_deck(deck_id):
+    try:
+        query = text("DELETE FROM decks WHERE id = :deck_id")
+        mysql_engine.query_executor(query.bindparams(deck_id=deck_id))
+        return json.dumps({"success": True, "message": "Deck deleted successfully"})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e)}), 500
 
 if 'DB_NAME' not in os.environ:
     app.run(debug=True,host="0.0.0.0",port=5000)
