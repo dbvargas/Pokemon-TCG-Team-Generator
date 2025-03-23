@@ -8,6 +8,14 @@
 
 <body>
   <div class="full-body-container">
+    <!-- Add modal HTML structure -->
+    <div id="cardModal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <img id="modalImage" src="" alt="Full card image">
+      </div>
+    </div>
+
     <div class="google-colors">
       <h1 id="google-3">TCG Card Generator</h1>
     </div>
@@ -19,20 +27,17 @@
       <button class="section-toggle" id="build-btn" onclick="showSection('build')">
         Build Deck
       </button>
-      <button
-        class="section-toggle"
-        id="saved-btn"
-        onclick="showSection('saved')"
-      >
+      <button class="section-toggle" id="saved-btn" onclick="showSection('saved')">
         Saved Decks
       </button>
     </div>
 
     <div id="search-section">
       <div style="margin-bottom: 10px;">
-        <button class="action-button" id="search-pokemon-btn" onclick="setSearchMode('pokemon')" style="margin-right: 5px;">Search Pokémon</button>
+        <button class="action-button" id="search-pokemon-btn" onclick="setSearchMode('pokemon')"
+          style="margin-right: 5px;">Search Pokémon</button>
         <button class="action-button" id="search-trainer-btn" onclick="setSearchMode('trainer')">Search Trainer</button>
-      </div>  
+      </div>
       <div class="input-box" onclick="sendFocus()">
         <img src="{{ url_for('static', filename='images/mag.png') }}" />
         <input placeholder="Enter a query on what kind of pokemon deck you want to generate" id="filter-text-val"
@@ -146,10 +151,13 @@
       const [setId, cardNumber] = id.split("-");
       const imageUrl = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
       return `
-        <div class='card-result' onclick="toggleCardSelection(this, '${id}', '${title}', '${imageUrl}')">
-          <img src="${imageUrl}" alt="${title}" onerror="this.onerror=null; this.src='fallback-image.png'">
-          <h3>${title}</h3>
-          <p>${descr}</p>
+        <div class='card-result'>
+          <div onclick="toggleCardSelection(this, '${id}', '${title}', '${imageUrl}')">
+            <img src="${imageUrl}" alt="${title}" onerror="this.onerror=null; this.src='fallback-image.png'">
+            <h3>${title}</h3>
+            <p>${descr}</p>
+          </div>
+          <div class="magnify-icon" onclick="event.preventDefault(); event.stopPropagation(); openCardModal('${imageUrl}')">🔍</div>
         </div>`;
     }
 
@@ -160,19 +168,19 @@
       }
 
       element.classList.toggle('selected');
-      
+
       if (element.classList.contains('selected')) {
         addCardToDeck(id, title, imageUrl);
       } else {
         removeCardFromDeck(id);
       }
-      
+
       updateDeckCount();
     }
 
     function addCardToDeck(id, title, imageUrl) {
       if (currentDeck.length >= MAX_DECK_SIZE) return;
-      
+
       currentDeck.push({ id, title, imageUrl });
       const deckGrid = document.getElementById('deck-grid');
       const cardElement = document.createElement('div');
@@ -191,7 +199,7 @@
         currentDeck.splice(index, 1);
         const cardElement = document.getElementById(`deck-card-${id}`);
         if (cardElement) cardElement.remove();
-        
+
         // Deselect card in search results if it exists
         const searchCard = document.querySelector(`.card-result.selected img[src*="${id}"]`);
         if (searchCard) {
@@ -217,7 +225,7 @@
       searchSection.style.display = "none";
       buildSection.style.display = "none";
       savedSection.style.display = "none";
-      
+
       // Remove selected class from all buttons
       searchBtn.classList.remove("selected-tab");
       buildBtn.classList.remove("selected-tab");
@@ -356,19 +364,19 @@
           cards: currentDeck
         })
       })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          alert('Deck saved successfully!');
-          loadSavedDecks();
-        } else {
-          alert('Error saving deck: ' + data.message);
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        alert('Error saving deck');
-      });
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert('Deck saved successfully!');
+            loadSavedDecks();
+          } else {
+            alert('Error saving deck: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error saving deck');
+        });
     }
 
     function loadDeck(deckId) {
@@ -380,14 +388,14 @@
             currentDeck = [];
             const deckGrid = document.getElementById('deck-grid');
             deckGrid.innerHTML = '';
-            
+
             // Load saved deck
             data.deck.cards.forEach(card => {
               addCardToDeck(card.id, card.title, card.imageUrl);
             });
-            
+
             updateDeckCount();
-            
+
             // Switch to search view
             showSection('search');
           } else {
@@ -412,7 +420,7 @@
               `Created: ${new Date(deck.created_at).toLocaleString()}\n`,
               `Cards:\n${deckList}`
             ], { type: 'text/plain' });
-            
+
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -443,7 +451,7 @@
         `Created: ${new Date().toLocaleString()}\n`,
         `Cards:\n${deckList}`
       ], { type: 'text/plain' });
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -505,16 +513,44 @@
     }
 
     function setSearchMode(mode) {
-        searchMode = mode;
-        document.getElementById("search-pokemon-btn").classList.toggle("selected-tab", mode === "pokemon");
-        document.getElementById("search-trainer-btn").classList.toggle("selected-tab", mode === "trainer");
-        const title = document.getElementById("filter-text-val").value.trim();
-        if (title !== "") {
-            filterText();
-        }
+      searchMode = mode;
+      document.getElementById("search-pokemon-btn").classList.toggle("selected-tab", mode === "pokemon");
+      document.getElementById("search-trainer-btn").classList.toggle("selected-tab", mode === "trainer");
+      const title = document.getElementById("filter-text-val").value.trim();
+      if (title !== "") {
+        filterText();
+      }
     }
+
+    // Add these new functions for modal handling
+    function openCardModal(imageUrl) {
+      const modal = document.getElementById('cardModal');
+      const modalImg = document.getElementById('modalImage');
+      modalImg.src = imageUrl;
+      modal.style.display = 'flex';
+    }
+
+    function closeCardModal() {
+      const modal = document.getElementById('cardModal');
+      modal.style.display = 'none';
+    }
+
+    // Add event listener for closing modal
+    document.addEventListener('DOMContentLoaded', function () {
+      const modal = document.getElementById('cardModal');
+      const closeBtn = document.querySelector('.close-modal');
+
+      closeBtn.onclick = closeCardModal;
+
+      modal.onclick = function (event) {
+        if (event.target === modal) {
+          closeCardModal();
+        }
+      };
+    });
+
     // Check for deck to load from saved decks page to make sure it loads when the page is refreshed
-    window.addEventListener('load', function() {
+    window.addEventListener('load', function () {
       const loadDeckId = sessionStorage.getItem('loadDeckId');
       if (loadDeckId) {
         loadDeck(loadDeckId);
