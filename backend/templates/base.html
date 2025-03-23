@@ -29,6 +29,10 @@
     </div>
 
     <div id="search-section">
+      <div style="margin-bottom: 10px;">
+        <button class="action-button" id="search-pokemon-btn" onclick="setSearchMode('pokemon')" style="margin-right: 5px;">Search Pokémon</button>
+        <button class="action-button" id="search-trainer-btn" onclick="setSearchMode('trainer')">Search Trainer</button>
+      </div>  
       <div class="input-box" onclick="sendFocus()">
         <img src="{{ url_for('static', filename='images/mag.png') }}" />
         <input placeholder="Enter a query on what kind of pokemon deck you want to generate" id="filter-text-val"
@@ -85,6 +89,7 @@
   </div>
 
   <script>
+    let searchMode = "pokemon"
     let currentDeck = [];
     const MAX_DECK_SIZE = 20;
 
@@ -108,7 +113,8 @@
       }
 
 
-      fetch("/episodes?" + new URLSearchParams({ title }).toString())
+      let endpoint = searchMode === "trainer" ? "/search_trainers" : "/episodes";
+      fetch(endpoint + "?" + new URLSearchParams({ title }).toString())
         .then((response) => response.json())
         .then((data) => {
           if (data && data.length > 0) {
@@ -498,6 +504,15 @@
       updateDeckCount();
     }
 
+    function setSearchMode(mode) {
+        searchMode = mode;
+        document.getElementById("search-pokemon-btn").classList.toggle("selected-tab", mode === "pokemon");
+        document.getElementById("search-trainer-btn").classList.toggle("selected-tab", mode === "trainer");
+        const title = document.getElementById("filter-text-val").value.trim();
+        if (title !== "") {
+            filterText();
+        }
+    }
     // Check for deck to load from saved decks page to make sure it loads when the page is refreshed
     window.addEventListener('load', function() {
       const loadDeckId = sessionStorage.getItem('loadDeckId');

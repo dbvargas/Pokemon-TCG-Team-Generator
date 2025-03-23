@@ -81,6 +81,36 @@ def new_sql_search(query):
 
     return json.dumps([dict(zip(keys,[i[1][0],str(i[1][7]),i[0]])) for i in ranked_data[:20]])
 
+def search_trainer_cards(query):
+    query = query.lower().strip()
+    words = re.split(r"[ -]", query)
+    
+    base_sql = "SELECT id, name, supertype, rules FROM allcards WHERE LOWER(supertype) = 'trainer' AND ("
+    
+    filters = []
+    for word in words:
+        if len(word) > 1:
+            filters.append(sql_like('name', word))
+        if len(word) > 2:
+            filters.append(f"(rules IS NOT NULL AND {sql_like('rules', word)})")
+    
+    if not filters:
+        return json.dumps([])
+
+    query_sql = base_sql + " OR ".join(filters) + ") LIMIT 20"
+    print("TRAINER SQL:", query_sql)
+
+    data = mysql_engine.query_selector(query_sql)
+
+    return json.dumps([
+        {
+            "id": row[0],
+            "title": row[1],
+            "descr": row[3] or "No description"
+        }
+        for row in data
+    ])
+
 def get_prevolution(name, format_query):
     name = name.replace("'", "\\'")
     query_sql = f"""SELECT * FROM allcards WHERE LOWER( name ) = '{name.lower()}' limit 50"""
@@ -237,6 +267,11 @@ def episodes_search():
 def type_search():
     selected_types = request.args.getlist('types[]')
     return type_cos_sim_search(selected_types)
+
+@app.route("/search_trainers")
+def search_trainers():
+    query = request.args.get("title", "")
+    return search_trainer_cards(query)
 
 @app.route("/save_deck", methods=['POST'])
 def save_deck():
