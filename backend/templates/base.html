@@ -825,8 +825,7 @@
       updateDeckCount();
     }
 
-    // Add this at the start of your script section
-    // Check for deck to load from saved decks page
+    // Check for deck to load from saved decks page to make sure it loads when the page is refreshed
     window.addEventListener('load', function() {
       const loadDeckId = sessionStorage.getItem('loadDeckId');
       if (loadDeckId) {
