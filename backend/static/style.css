@@ -308,30 +308,63 @@ body {
     z-index: 1000;
     justify-content: center;
     align-items: center;
+    padding: 20px;
 }
 
 .modal-content {
-    max-width: 98%;
-    max-height: 98vh;
     position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 80px;
+    background-color: #fefefe;
+    padding: 80px;
+    border-radius: 12px;
+    max-width: 98vw;
+    max-height: 98vh;
+    overflow: auto;
 }
 
-.modal-content img {
-    max-width: 100%;
-    max-height: 98vh;
-    object-fit: contain;
-    transform: scale(1.5);
+.card-info {
+    flex: 1;
+    min-width: 400px;
+    padding: 40px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 12px;
+    color: white;
+    margin: 20px 0;
+}
+
+.card-info h2 {
+    margin: 0 0 40px 0;
+    font-size: 32px;
+    color: white;
+}
+
+.card-info p {
+    margin: 20px 0;
+    font-size: 24px;
+    color: white;
+}
+
+#modalImage {
+    max-width: 800px;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    transform: scale(1.4);
+    transform-origin: left center;
+    margin: 20px 0;
 }
 
 .close-modal {
     position: absolute;
-    top: -40px;
-    right: 0;
-    color: white;
-    font-size: 30px;
+    right: 30px;
+    top: 30px;
+    color: #aaa;
+    font-size: 36px;
+    font-weight: bold;
     cursor: pointer;
-    padding: 10px;
-    z-index: 1001;
+    z-index: 1;
 }
 
 .deck-section {

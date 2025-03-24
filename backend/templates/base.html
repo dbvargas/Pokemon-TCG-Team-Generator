@@ -13,6 +13,11 @@
       <div class="modal-content">
         <span class="close-modal">&times;</span>
         <img id="modalImage" src="" alt="Full card image">
+        <div class="card-info">
+          <h2 id="modalCardName"></h2>
+          <p>HP: <span id="modalCardHP"></span></p>
+          <p>Type: <span id="modalCardType"></span></p>
+        </div>
       </div>
     </div>
 
@@ -157,7 +162,7 @@
             <h3>${title}</h3>
             <p>${descr}</p>
           </div>
-          <div class="magnify-icon" onclick="event.preventDefault(); event.stopPropagation(); openCardModal('${imageUrl}')">🔍</div>
+          <div class="magnify-icon" onclick="event.preventDefault(); event.stopPropagation(); openCardModal('${id}', '${title}')">🔍</div>
         </div>`;
     }
 
@@ -523,10 +528,31 @@
     }
 
     // Add these new functions for modal handling
-    function openCardModal(imageUrl) {
+    function openCardModal(cardId, cardTitle) {
       const modal = document.getElementById('cardModal');
       const modalImg = document.getElementById('modalImage');
-      modalImg.src = imageUrl;
+      const modalCardName = document.getElementById('modalCardName');
+      const modalCardHP = document.getElementById('modalCardHP');
+      const modalCardType = document.getElementById('modalCardType');
+
+      // Use the same image URL format as in answerBoxTemplate
+      const [setId, cardNumber] = cardId.split("-");
+      modalImg.src = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
+      modalCardName.textContent = cardTitle;
+
+      // Fetch card details from the server
+      fetch(`/card_details/${cardId}`)
+        .then(response => response.json())
+        .then(data => {
+          modalCardHP.textContent = data.hp || 'N/A';
+          modalCardType.textContent = data.types ? data.types.join(', ') : 'N/A';
+        })
+        .catch(error => {
+          console.error('Error fetching card details:', error);
+          modalCardHP.textContent = 'N/A';
+          modalCardType.textContent = 'N/A';
+        });
+
       modal.style.display = 'flex';
     }
 

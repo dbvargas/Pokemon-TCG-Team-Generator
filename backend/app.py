@@ -334,5 +334,28 @@ def delete_deck(deck_id):
     except Exception as e:
         return json.dumps({"success": False, "message": str(e)}), 500
 
+@app.route("/card_details/<card_id>")
+def get_card_details(card_id):
+    query_sql = f"""SELECT * FROM allcards WHERE id = '{card_id}'"""
+    print(f"Executing query: {query_sql}")  # Debug log
+    data = list(mysql_engine.query_selector(query_sql))  # Convert to list
+    if data:
+        row = data[0]
+        print(f"Full row data: {row}")  # Debug log
+        
+        # HP is at index 13 for Pokemon cards
+        hp = row[13] if row[13] else "N/A"
+        types_str = row[9] if row[9] else "[]"
+        types = types_str.strip('[]').replace("'", "").split(',')
+        types = [t.strip() for t in types if t.strip()]
+        
+        response = {
+            "hp": hp,
+            "types": types if types else ["N/A"]
+        }
+        print(f"Final response: {response}")  # Debug log
+        return json.dumps(response)
+    return json.dumps({"error": "Card not found"}), 404
+
 if 'DB_NAME' not in os.environ:
     app.run(debug=True,host="0.0.0.0",port=5000)
