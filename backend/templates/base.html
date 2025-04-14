@@ -30,6 +30,7 @@
           <h2 id="modalCardName"></h2>
           <p>HP: <span id="modalCardHP"></span></p>
           <p>Type: <span id="modalCardType"></span></p>
+          <p>Similarity to ranked decks: <span id="modalCardSimilarity"></span></p>
         </div>
       </div>
     </div>
@@ -556,6 +557,7 @@
       const modalCardName = document.getElementById('modalCardName');
       const modalCardHP = document.getElementById('modalCardHP');
       const modalCardType = document.getElementById('modalCardType');
+      const modalCardSimilarity = document.getElementById('modalCardSimilarity');
 
       // Use the same image URL format as in answerBoxTemplate
       const [setId, cardNumber] = cardId.split("-");
@@ -568,11 +570,13 @@
         .then(data => {
           modalCardHP.textContent = data.hp || 'N/A';
           modalCardType.textContent = data.types ? data.types.join(', ') : 'N/A';
+          modalCardSimilarity.textContent = data.similarity_score || 'N/A';
         })
         .catch(error => {
           console.error('Error fetching card details:', error);
           modalCardHP.textContent = 'N/A';
           modalCardType.textContent = 'N/A';
+          modalCardSimilarity.textContent = 'N/A';
         });
 
       modal.style.display = 'flex';
