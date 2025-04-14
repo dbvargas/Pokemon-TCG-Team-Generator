@@ -5,13 +5,13 @@ class MySQLDatabaseHandler(object):
     
     IS_DOCKER = True if 'DB_NAME' in os.environ else False
 
-    def __init__(self, MYSQL_USER, MYSQL_USER_PASSWORD, MYSQL_PORT, MYSQL_DATABASE, MYSQL_HOST = "localhost"):
+    def __init__(self,MYSQL_USER,MYSQL_USER_PASSWORD,MYSQL_PORT,MYSQL_DATABASE,MYSQL_HOST = "localhost"):
         
-        self.MYSQL_HOST = os.environ['DB_HOST'] if MySQLDatabaseHandler.IS_DOCKER else MYSQL_HOST
-        self.MYSQL_USER = os.environ['DB_USER'] if MySQLDatabaseHandler.IS_DOCKER else MYSQL_USER
-        self.MYSQL_USER_PASSWORD = os.environ['DB_PASSWORD'] if MySQLDatabaseHandler.IS_DOCKER else MYSQL_USER_PASSWORD
-        self.MYSQL_PORT = os.environ['DB_PORT'] if MySQLDatabaseHandler.IS_DOCKER else MYSQL_PORT
-        self.MYSQL_DATABASE = os.environ['DB_NAME'] if MySQLDatabaseHandler.IS_DOCKER else MYSQL_DATABASE
+        self.MYSQL_HOST = os.environ['DB_NAME'] if MySQLDatabaseHandler.IS_DOCKER else MYSQL_HOST
+        self.MYSQL_USER = "admin" if MySQLDatabaseHandler.IS_DOCKER else MYSQL_USER
+        self.MYSQL_USER_PASSWORD = "admin" if MySQLDatabaseHandler.IS_DOCKER else MYSQL_USER_PASSWORD
+        self.MYSQL_PORT = 3306 if MySQLDatabaseHandler.IS_DOCKER else MYSQL_PORT
+        self.MYSQL_DATABASE = "kardashiandb" if MySQLDatabaseHandler.IS_DOCKER else MYSQL_DATABASE
         self.engine = self.validate_connection()
 
     def validate_connection(self):
@@ -44,4 +44,3 @@ class MySQLDatabaseHandler(object):
         sql_file_data = list(filter(lambda x:x != '',sql_file.read().split(";\n")))
         self.query_executor(sql_file_data)
         sql_file.close()
-
