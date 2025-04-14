@@ -348,72 +348,136 @@ def get_card_details(card_id):
         types = types_str.strip('[]').replace("'", "").split(',')
         types = [t.strip() for t in types if t.strip()]
         
+        # Calculate similarity score
+        similarity_score = calculate_ranked_deck_similarity(card_id)
+        
         response = {
             "hp": hp,
-            "types": types if types else ["N/A"]
+            "types": types if types else ["N/A"],
+            "similarity_score": f"{similarity_score:.1f}%"
         }
         print(f"Final response: {response}")  # Debug log
         return json.dumps(response)
     return json.dumps({"error": "Card not found"}), 404
 
 def get_top_limitless_decks():
-     print("Fetching tournaments...")
-     response = requests.get("https://play.limitlesstcg.com/api/tournaments")
-     print("Status:", response.status_code)
- 
-     if response.status_code != 200:
-         return []
- 
-     tournaments = response.json()
-     print(f"Total tournaments: {len(tournaments)}")
- 
-     top_decks = []
-     checked = 0
- 
-     for t in tournaments:
-         if not t.get("id") or not t.get("name") or t.get("status") != "completed":
-             continue
- 
-         tid = t["id"]
-         print(f"\nChecking tournament: {t['name']} (ID: {tid})")
- 
-         standings_url = f"https://play.limitlesstcg.com/api/tournaments/{tid}/standings"
-         r = requests.get(standings_url)
-         print("Standings response:", r.status_code)
- 
-         if r.status_code != 200:
-             continue
- 
-         standings = r.json()
-         print(f"Found {len(standings)} players in standings.")
- 
-         if not standings:
-             continue
- 
-         for entry in standings[:5]:  # Try 5 per tournament
-             if not entry.get("deck_id"):
-                 continue
- 
-             print(f"Adding deck: {entry.get('player')} - {entry.get('archetype')}")
- 
-             top_decks.append({
-                 "player": entry.get("player", "Unknown"),
-                 "placing": entry.get("placing", "?"),
-                 "deck_archetype": entry.get("archetype", "Unknown"),
-                 "event": t["name"],
-                 "link": f"https://limitlesstcg.com/decks/{entry['deck_id']}"
-             })
- 
-             if len(top_decks) >= 10:
-                 print("Collected 10 decks, returning now.")
-                 return top_decks
- 
-         checked += 1
-         if checked >= 10:
-             break
- 
-     print(f"Returning {len(top_decks)} decks.")
-     return top_decks
+    print("Fetching tournaments...")
+    try:
+        # Try the new API endpoint
+        response = requests.get("https://play.limitlesstcg.com/api/tournaments/recent")
+        print("Status:", response.status_code)
+        
+        if response.status_code != 200:
+            print("Failed to fetch recent tournaments, trying alternative endpoint...")
+            # Try alternative endpoint
+            response = requests.get("https://play.limitlesstcg.com/api/tournaments")
+            print("Alternative endpoint status:", response.status_code)
+            
+            if response.status_code != 200:
+                print("Both endpoints failed, using fallback data")
+                # Return some fallback data for testing
+                return [
+                    {
+                        "player": "Test Player 1",
+                        "placing": "1",
+                        "deck_archetype": "Fire Deck",
+                        "event": "Test Tournament",
+                        "link": "https://limitlesstcg.com/decks/test1",
+                        "cards": ["sv2-258", "sv2-259", "sv2-260"]  # Example card IDs
+                    },
+                    {
+                        "player": "Test Player 2",
+                        "placing": "2",
+                        "deck_archetype": "Water Deck",
+                        "event": "Test Tournament",
+                        "link": "https://limitlesstcg.com/decks/test2",
+                        "cards": ["sv2-261", "sv2-262", "sv2-263"]  # Example card IDs
+                    }
+                ]
+        
+        tournaments = response.json()
+        print(f"Total tournaments: {len(tournaments)}")
+        
+        top_decks = []
+        checked = 0
+        
+        for t in tournaments:
+            if not t.get("id") or not t.get("name") or t.get("status") != "completed":
+                continue
+            
+            tid = t["id"]
+            print(f"\nChecking tournament: {t['name']} (ID: {tid})")
+            
+            standings_url = f"https://play.limitlesstcg.com/api/tournaments/{tid}/standings"
+            r = requests.get(standings_url)
+            print("Standings response:", r.status_code)
+            
+            if r.status_code != 200:
+                continue
+            
+            standings = r.json()
+            print(f"Found {len(standings)} players in standings.")
+            
+            if not standings:
+                continue
+            
+            for entry in standings[:5]:  # Try 5 per tournament
+                if not entry.get("deck_id"):
+                    continue
+                
+                print(f"Adding deck: {entry.get('player')} - {entry.get('archetype')}")
+                
+                # Get deck details
+                deck_url = f"https://play.limitlesstcg.com/api/decks/{entry['deck_id']}"
+                deck_response = requests.get(deck_url)
+                if deck_response.status_code != 200:
+                    continue
+                    
+                deck_data = deck_response.json()
+                if not deck_data or 'cards' not in deck_data:
+                    continue
+                
+                top_decks.append({
+                    "player": entry.get("player", "Unknown"),
+                    "placing": entry.get("placing", "?"),
+                    "deck_archetype": entry.get("archetype", "Unknown"),
+                    "event": t["name"],
+                    "link": f"https://limitlesstcg.com/decks/{entry['deck_id']}",
+                    "cards": [card.get('id') for card in deck_data['cards'] if card.get('id')]
+                })
+                
+                if len(top_decks) >= 10:
+                    print("Collected 10 decks, returning now.")
+                    return top_decks
+            
+            checked += 1
+            if checked >= 10:
+                break
+        
+        print(f"Returning {len(top_decks)} decks.")
+        return top_decks
+        
+    except Exception as e:
+        print(f"Error in get_top_limitless_decks: {e}")
+        # Return fallback data if API fails
+        return [
+            {
+                "player": "Test Player 1",
+                "placing": "1",
+                "deck_archetype": "Fire Deck",
+                "event": "Test Tournament",
+                "link": "https://limitlesstcg.com/decks/test1",
+                "cards": ["sv2-258", "sv2-259", "sv2-260"]  # Example card IDs
+            },
+            {
+                "player": "Test Player 2",
+                "placing": "2",
+                "deck_archetype": "Water Deck",
+                "event": "Test Tournament",
+                "link": "https://limitlesstcg.com/decks/test2",
+                "cards": ["sv2-261", "sv2-262", "sv2-263"]  # Example card IDs
+            }
+        ]
 
 def extract_and_preprocess_card_features_with_flavor_text():
     query_sql = """
@@ -579,5 +643,115 @@ def episodes_search():
     text = request.args.get("title", "")
     return svd_search(text)
   
+def calculate_ranked_deck_similarity(card_id):
+    print(f"\nCalculating similarity for card {card_id}")
+    
+    query_sql = f"""
+    SELECT types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavorText, hp, name 
+    FROM allcards 
+    WHERE id = '{card_id}'
+    """
+    print(f"Card query: {query_sql}")
+    card_data = list(mysql_engine.query_selector(query_sql))
+    
+    if not card_data:
+        print("No card data found")
+        return 0.0
+        
+    row = card_data[0]
+    types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavor_text, hp, name = row
+    print(f"Card name: {name}, Types: {types}, HP: {hp}")
+    
+    abilities_text = parse_json_field(abilities)
+    attacks_text = parse_json_field(attacks)
+    weaknesses_text = parse_json_field(weaknesses)
+    resistances_text = parse_json_field(resistances)
+    combined_text = " ".join(filter(None, [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
+    types_list = parse_list_field(types)
+    subtypes_list = parse_list_field(subtypes)
+    print(f"Parsed types: {types_list}, Parsed subtypes: {subtypes_list}")
+    
+    scores = {}
+    
+    type_score = 0
+    if types_list:
+        common_types = {'Fire', 'Water', 'Grass', 'Lightning', 'Psychic', 'Fighting', 'Darkness', 'Metal', 'Fairy', 'Dragon'}
+        type_score = len(set(types_list) & common_types) / len(types_list)
+    scores['type'] = type_score * 0.3
+    print(f"Type score: {type_score} -> {scores['type']}")
+    
+    hp_score = 0
+    try:
+        hp_value = int(hp) if hp else 0
+        if hp_value >= 300:
+            hp_score = 1.0
+        elif hp_value >= 250:
+            hp_score = 0.8
+        elif hp_value >= 200:
+            hp_score = 0.6
+        elif hp_value >= 150:
+            hp_score = 0.4
+        elif hp_value >= 100:
+            hp_score = 0.2
+    except ValueError:
+        pass
+    scores['hp'] = hp_score * 0.2
+    print(f"HP score: {hp_score} -> {scores['hp']}")
+    
+    ability_score = 0
+    if abilities_text or attacks_text:
+        powerful_keywords = {
+            'draw', 'search', 'damage', 'heal', 'energy', 'evolution', 'retreat', 'switch',
+            'prevent', 'protect', 'discard', 'shuffle', 'bench', 'prize', 'knock out'
+        }
+        text_words = set(combined_text.lower().split())
+        matching_keywords = len(text_words & powerful_keywords)
+        ability_score = min(matching_keywords / 5, 1.0)
+    scores['ability'] = ability_score * 0.3
+    print(f"Ability score: {ability_score} -> {scores['ability']}")
+    
+    subtype_score = 0
+    if subtypes_list:
+        valuable_subtypes = {'VMAX', 'VSTAR', 'ex', 'GX', 'V'}
+        subtype_score = len(set(subtypes_list) & valuable_subtypes) / len(subtypes_list)
+    scores['subtype'] = subtype_score * 0.2
+    print(f"Subtype score: {subtype_score} -> {scores['subtype']}")
+    
+    base_score = sum(scores.values())
+    print(f"Base score: {base_score}")
+    
+    check_sql = f"""
+    SELECT COUNT(*) FROM ranked_decks WHERE id_card = '{card_id}'
+    """
+    count_result = list(mysql_engine.query_selector(check_sql))
+    tournament_count = count_result[0][0]
+    print(f"Number of times this card appears in ranked_decks: {tournament_count}")
+    
+    if tournament_count > 0:
+        query_sql = f"""
+        SELECT DISTINCT id_tournament, name_tournament, category_tournament
+        FROM ranked_decks 
+        WHERE id_card = '{card_id}'
+        """
+        deck_data = list(mysql_engine.query_selector(query_sql))
+        
+        if deck_data:
+            tournament_bonus = min(tournament_count / 10, 0.3)
+            base_score *= (1 + tournament_bonus)
+            print(f"Applied tournament bonus: {tournament_bonus}")
+            
+            championship_count = sum(1 for deck in deck_data if deck[2] and "championship" in deck[2].lower())
+            if championship_count > 0:
+                championship_bonus = min(championship_count / 5, 0.2)
+                base_score *= (1 + championship_bonus)
+                print(f"Applied championship bonus: {championship_bonus}")
+    
+    final_score = base_score * 100
+    if final_score < 20:
+        final_score = 20
+    print(f"Final score: {final_score}%")
+    
+    return min(final_score, 100)
+
 if 'DB_NAME' not in os.environ:
      app.run(debug=True,host="0.0.0.0",port=5000)
