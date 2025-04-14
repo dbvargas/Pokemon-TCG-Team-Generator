@@ -262,11 +262,6 @@ create_deck_table()
 def home():
     return render_template('base.html',title="sample html")
 
-@app.route("/episodes")
-def episodes_search():
-    text = request.args.get("title")
-    return sql_search(text)
-
 @app.route("/type_search")
 def type_search():
     selected_types = request.args.getlist('types[]')
@@ -476,14 +471,16 @@ def parse_list_field(list_str):
 
 def preprocess():
     query_sql = """
-    SELECT types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavorText, hp FROM allcards
+    SELECT id, name, types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavorText, hp FROM allcards
     """
     data = mysql_engine.query_selector(query_sql)
     
+    card_ids = []
+    card_names = []
     card_features = []
     hp_values = []
     for row in data:
-        types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavor_text, hp = row
+        card_id, name, types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavor_text, hp = row
         
         abilities_text = parse_json_field(abilities)
         attacks_text = parse_json_field(attacks)
@@ -495,6 +492,8 @@ def preprocess():
         types_list = parse_list_field(types)
         subtypes_list = parse_list_field(subtypes)
         
+        card_ids.append(card_id)
+        card_names.append(name)
         card_features.append({
             "types": types_list,
             "subtypes": subtypes_list,
@@ -502,7 +501,7 @@ def preprocess():
             "text": combined_text
         })
         hp_values.append(hp if hp is not None else 0) 
-    return card_features, hp_values
+    return card_features, hp_values, card_ids, card_names
 
 def compute_tfidf_with_hp():
     card_features, hp_values = preprocess()
@@ -529,6 +528,44 @@ def compute_tfidf_with_hp():
 
     return final_matrix, vectorizer.get_feature_names_out()
 
+def svd_search(query, k=20):
+    card_features, hp_values, card_ids, card_name = preprocess()
+
+    combined_texts = [
+        " ".join(card["types"] + card["subtypes"] + [card["supertype"], card["text"]])
+        for card in card_features
+    ]
+
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(combined_texts)
+    docs_compressed, s, words_compressed = svds(tfidf_matrix, k=40)
+    docs_compressed = normalize(docs_compressed)
+
+    scaler = MinMaxScaler()
+    hp_normalized = scaler.fit_transform(np.array(hp_values).reshape(-1, 1))
+    final_matrix = np.hstack((docs_compressed, hp_normalized))
+
+    query_vec = vectorizer.transform([query])
+    query_compressed = normalize(query_vec @ words_compressed.T)
+
+    query_combined = np.hstack((query_compressed, [[0.5]]))
+
+    sims = final_matrix @ query_combined.T
+    sims = sims.flatten()
+
+    sorted_indices = np.argsort(sims)[::-1][:k]
+
+    results = []
+    for idx in sorted_indices:
+        card = card_features[idx]
+        results.append({
+            "id": card_ids[idx],
+            "title": card_name[idx],
+            "descr": card["text"]
+        })
+
+    return json.dumps(results)
+
 @app.route("/get_top_decks")
 def get_top_decks():
      try:
@@ -536,6 +573,11 @@ def get_top_decks():
          return json.dumps({"success": True, "decks": decks})
      except Exception as e:
          return json.dumps({"success": False, "message": str(e)})
+
+@app.route("/episodes")
+def episodes_search():
+    text = request.args.get("title", "")
+    return svd_search(text)
   
 if 'DB_NAME' not in os.environ:
      app.run(debug=True,host="0.0.0.0",port=5000)
