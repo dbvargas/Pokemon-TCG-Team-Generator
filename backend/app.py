@@ -16,7 +16,7 @@ from scipy.sparse.linalg import svds
 load_dotenv()
 
 # Enable demo mode to run without database
-DEMO_MODE = True
+DEMO_MODE = False
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
