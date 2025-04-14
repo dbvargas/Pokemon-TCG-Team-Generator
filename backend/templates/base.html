@@ -8,6 +8,19 @@
 
 <body>
   <div class="full-body-container">
+    <!-- Add deck popup -->
+    <div id="deckPopup" class="deck-popup">
+      <div class="deck-popup-header">
+        <h3>Current Deck (<span id="deck-count">0</span>/20)</h3>
+        <button class="minimize-button" onclick="toggleDeckPopup()">−</button>
+      </div>
+      <div id="deck-grid" class="deck-grid"></div>
+      <div class="deck-actions">
+        <button class="action-button save-button" onclick="saveDeck()">Save Deck</button>
+        <button class="action-button export-button" onclick="exportCurrentDeck()">Export Deck</button>
+      </div>
+    </div>
+
     <!-- Add modal HTML structure -->
     <div id="cardModal" class="modal">
       <div class="modal-content">
@@ -56,17 +69,6 @@
         <button class="action-button" onclick="clearAllCards()">Clear All</button>
       </div>
       <div id="answer-box"></div>
-      <div class="deck-section">
-        <h2>Current Deck</h2>
-        <div class="deck-info">
-          <p>Cards in deck: <span id="deck-count">0</span>/20</p>
-        </div>
-        <div id="deck-grid" class="deck-grid"></div>
-        <div class="deck-actions">
-          <button class="action-button save-button" onclick="saveDeck()">Save Deck</button>
-          <button class="action-button export-button" onclick="exportCurrentDeck()">Export Deck</button>
-        </div>
-      </div>
     </div>
 
     <div id="build-section" style="display: none">
@@ -109,7 +111,7 @@
 
   <script>
     let searchMode = "pokemon"
-    let currentDeck = [];
+    let currentDeck = JSON.parse(localStorage.getItem('currentDeck') || '[]');
     const MAX_DECK_SIZE = 20;
 
     function toggleType(type, element) {
@@ -166,29 +168,30 @@
       const imageUrl = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
       return `
         <div class='card-result'>
-          <div onclick="toggleCardSelection(this, '${id}', '${title}', '${imageUrl}')">
+          <div class="card-content" onclick="selectCard(this, '${id}', '${title}', '${imageUrl}')">
             <img src="${imageUrl}" alt="${title}" onerror="this.onerror=null; this.src='fallback-image.png'">
             <h3>${title}</h3>
-            <p>${descr}</p>
           </div>
-          <div class="magnify-icon" onclick="event.preventDefault(); event.stopPropagation(); openCardModal('${id}', '${title}')">🔍</div>
+          <div class="magnify-icon" onclick="event.stopPropagation(); openCardModal('${id}', '${title}')">🔍</div>
         </div>`;
     }
 
-    function toggleCardSelection(element, id, title, imageUrl) {
-      if (currentDeck.length >= MAX_DECK_SIZE && !element.classList.contains('selected')) {
+    function selectCard(element, id, title, imageUrl) {
+      if (currentDeck.length >= MAX_DECK_SIZE) {
         alert('Deck is full! Remove some cards first.');
         return;
       }
 
-      element.classList.toggle('selected');
-
-      if (element.classList.contains('selected')) {
-        addCardToDeck(id, title, imageUrl);
-      } else {
-        removeCardFromDeck(id);
+      // Check if card is already in deck
+      const isInDeck = currentDeck.some(card => card.id === id);
+      if (isInDeck) {
+        alert('This card is already in your deck!');
+        return;
       }
 
+      // Add card to deck
+      element.classList.add('selected');
+      addCardToDeck(id, title, imageUrl);
       updateDeckCount();
     }
 
@@ -215,7 +218,7 @@
         if (cardElement) cardElement.remove();
 
         // Deselect card in search results if it exists
-        const searchCard = document.querySelector(`.card-result.selected img[src*="${id}"]`);
+        const searchCard = document.querySelector(`.card-result .card-content.selected img[src*="${id}"]`);
         if (searchCard) {
           searchCard.parentElement.classList.remove('selected');
         }
@@ -225,6 +228,8 @@
 
     function updateDeckCount() {
       document.getElementById('deck-count').textContent = currentDeck.length;
+      // Save to localStorage after updating count
+      localStorage.setItem('currentDeck', JSON.stringify(currentDeck));
     }
 
     function showSection(section) {
@@ -637,4 +642,8 @@
       }
     });
   </script>
+  
+  <!-- Include the external script file -->
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
+</html>
