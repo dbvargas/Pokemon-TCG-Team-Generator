@@ -1,13 +1,12 @@
 import json
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request
 from flask_cors import CORS
 from helpers.MySQLDatabaseHandler import MySQLDatabaseHandler
 import re
 from dotenv import load_dotenv
 import numpy as np
 from sqlalchemy import text
-import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import MinMaxScaler
 
@@ -360,41 +359,106 @@ def get_card_details(card_id):
         return json.dumps(response)
     return json.dumps({"error": "Card not found"}), 404
 
-@app.route('/process_tfidf', methods=['GET'])
-def process_tfidf():
-    query = """
-    SELECT name, types, supertype, subtypes, abilities, attacks, weaknesses, resistances, hp, level, convertedRetreatCost
-    FROM allcards
+def extract_and_preprocess_card_features_with_flavor_text():
+    query_sql = """
+    SELECT types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavorText FROM allcards
     """
-    df = pd.read_sql(query, mysql_engine.connection)
-    df.fillna('', inplace=True)
-    df['text_features'] = (
-        df['name'] + ' ' +
-        df['types'] + ' ' +
-        df['supertype'] + ' ' +
-        df['subtypes'] + ' ' +
-        df['abilities'] + ' ' +
-        df['attacks'] + ' ' +
-        df['weaknesses'] + ' ' +
-        df['resistances']
-    )
+    data = mysql_engine.query_selector(query_sql)
+    
+    card_features = []
+    for row in data:
+        types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavor_text = row
+        
+        abilities_text = parse_json_field(abilities)
+        attacks_text = parse_json_field(attacks)
+        weaknesses_text = parse_json_field(weaknesses)
+        resistances_text = parse_json_field(resistances)
+        
+        combined_text = " ".join(filter(None, [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
+        
+        types_list = parse_list_field(types)
+        subtypes_list = parse_list_field(subtypes)
+        
+        card_features.append({
+            "types": types_list,
+            "subtypes": subtypes_list,
+            "supertype": supertype,
+            "text": combined_text
+        })
+    
+    return card_features
 
+def parse_json_field(json_str):
+    if json_str is None:
+        return "" 
+    try:
+        json_str = json_str.replace("'", "\"")
+        data = json.loads(json_str)
+        if isinstance(data, list):
+            return " ".join(item.get('text', '') for item in data if isinstance(item, dict))
+        return ""
+    except (json.JSONDecodeError, TypeError):
+        return ""
+
+def parse_list_field(list_str):
+    if list_str is None:
+        return []
+    try:
+        list_str = list_str.replace("'", "\"")
+        data = json.loads(list_str)
+        if isinstance(data, list):
+            return data
+        return []
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def preprocess():
+    query_sql = """
+    SELECT types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavorText, hp FROM allcards
+    """
+    data = mysql_engine.query_selector(query_sql)
+    
+    card_features = []
+    hp_values = []
+    for row in data:
+        types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavor_text, hp = row
+        
+        abilities_text = parse_json_field(abilities)
+        attacks_text = parse_json_field(attacks)
+        weaknesses_text = parse_json_field(weaknesses)
+        resistances_text = parse_json_field(resistances)
+        
+        combined_text = " ".join(filter(None, [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
+        
+        types_list = parse_list_field(types)
+        subtypes_list = parse_list_field(subtypes)
+        
+        card_features.append({
+            "types": types_list,
+            "subtypes": subtypes_list,
+            "supertype": supertype,
+            "text": combined_text
+        })
+        hp_values.append(hp if hp is not None else 0) 
+    return card_features, hp_values
+
+def compute_tfidf_with_hp():
+    card_features, hp_values = preprocess()
+    
+    combined_texts = []
+    for card in card_features:
+        combined_text = " ".join(card["types"] + card["subtypes"] + [card["supertype"], card["text"]])
+        combined_texts.append(combined_text)
+        
+        # Print the combined text for each card print("Combined Text for Card:", combined_text)
+    
     vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(df['text_features'])
-
-    #normalize numerical stats
-    numerical_features = df[['hp', 'level', 'convertedRetreatCost']].astype(float)
+    tfidf_matrix = vectorizer.fit_transform(combined_texts)
     scaler = MinMaxScaler()
-    normalized_numerical = scaler.fit_transform(numerical_features)
-    combined_features = np.hstack((tfidf_matrix.toarray(), normalized_numerical))
-    feature_names = list(vectorizer.get_feature_names_out()) + ['hp', 'level', 'convertedRetreatCost']
-    combined_data = [
-        {feature_names[i]: combined_features[j, i] for i in range(len(feature_names))}
-        for j in range(combined_features.shape[0])
-    ]
+    hp_normalized = scaler.fit_transform(np.array(hp_values).reshape(-1, 1))
+    augmented_matrix = np.hstack((tfidf_matrix.toarray(), hp_normalized))
+    return augmented_matrix, vectorizer.get_feature_names_out()
 
-    return jsonify(combined_data)
-
-if __name__ == '__main__':
-    if 'DB_NAME' not in os.environ:
-        app.run(debug=True, host="0.0.0.0", port=5000)
+if 'DB_NAME' not in os.environ:
+    app.run(debug=True,host="0.0.0.0",port=5000)
