@@ -622,7 +622,7 @@ button.selected-tab {
     position: fixed;
     right: 20px;
     top: 20px;
-    width: 300px;
+    width: 320px;
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -672,9 +672,10 @@ button.selected-tab {
     padding: 15px;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 15px;
     overflow-y: auto;
     max-height: calc(80vh - 100px);
+    align-items: start;
 }
 
 .deck-actions {
@@ -685,4 +686,53 @@ button.selected-tab {
     border-top: 1px solid #ddd;
     background-color: #f5f5f5;
     border-radius: 0 0 8px 8px;
+}
+
+/* Evolution card stacking styles */
+.evolution-stack {
+    position: relative;
+    margin-bottom: 20px;
+    grid-column: span 1;
+}
+
+.evolution-stack .deck-card {
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+.evolution-stack .deck-card:not(:first-child) {
+    margin-top: -65%;
+    margin-left: 15px;
+}
+
+.evolution-stack:hover .deck-card:not(:first-child) {
+    transform: translateY(-15px);
+}
+
+.evolution-stack .deck-card .card-relation {
+    position: absolute;
+    top: -10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    z-index: 5;
+}
+
+.evolution-stack .deck-card .similarity-score {
+    position: absolute;
+    top: 25px;
+    left: 10px;
+    background-color: rgba(65, 105, 225, 0.8);
+    color: white;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    z-index: 5;
+}
+
+.evolution-stack.large {
+    grid-column: span 2;
 }
