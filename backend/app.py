@@ -1,12 +1,15 @@
 import json
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from helpers.MySQLDatabaseHandler import MySQLDatabaseHandler
 import re
 from dotenv import load_dotenv
 import numpy as np
 from sqlalchemy import text
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import MinMaxScaler
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -357,5 +360,41 @@ def get_card_details(card_id):
         return json.dumps(response)
     return json.dumps({"error": "Card not found"}), 404
 
-if 'DB_NAME' not in os.environ:
-    app.run(debug=True,host="0.0.0.0",port=5000)
+@app.route('/process_tfidf', methods=['GET'])
+def process_tfidf():
+    query = """
+    SELECT name, types, supertype, subtypes, abilities, attacks, weaknesses, resistances, hp, level, convertedRetreatCost
+    FROM allcards
+    """
+    df = pd.read_sql(query, mysql_engine.connection)
+    df.fillna('', inplace=True)
+    df['text_features'] = (
+        df['name'] + ' ' +
+        df['types'] + ' ' +
+        df['supertype'] + ' ' +
+        df['subtypes'] + ' ' +
+        df['abilities'] + ' ' +
+        df['attacks'] + ' ' +
+        df['weaknesses'] + ' ' +
+        df['resistances']
+    )
+
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(df['text_features'])
+
+    #normalize numerical stats
+    numerical_features = df[['hp', 'level', 'convertedRetreatCost']].astype(float)
+    scaler = MinMaxScaler()
+    normalized_numerical = scaler.fit_transform(numerical_features)
+    combined_features = np.hstack((tfidf_matrix.toarray(), normalized_numerical))
+    feature_names = list(vectorizer.get_feature_names_out()) + ['hp', 'level', 'convertedRetreatCost']
+    combined_data = [
+        {feature_names[i]: combined_features[j, i] for i in range(len(feature_names))}
+        for j in range(combined_features.shape[0])
+    ]
+
+    return jsonify(combined_data)
+
+if __name__ == '__main__':
+    if 'DB_NAME' not in os.environ:
+        app.run(debug=True, host="0.0.0.0", port=5000)
