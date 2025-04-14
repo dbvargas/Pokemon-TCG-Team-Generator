@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 import numpy as np
 from sqlalchemy import text
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, normalize
+from scipy.sparse.linalg import svds
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -512,13 +513,21 @@ def compute_tfidf_with_hp():
         combined_texts.append(combined_text)
         
         # Print the combined text for each card print("Combined Text for Card:", combined_text)
-    
+
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(combined_texts)
+
+    # SVD Decomposition, Inspired by SVD Demo
+    docs_compressed, s, words_compressed = svds(tfidf_matrix, k = 40)
+    words_compressed = words_compressed.T
+    docs_compressed_norm = normalize(docs_compressed)
+
     scaler = MinMaxScaler()
     hp_normalized = scaler.fit_transform(np.array(hp_values).reshape(-1, 1))
-    augmented_matrix = np.hstack((tfidf_matrix.toarray(), hp_normalized))
-    return augmented_matrix, vectorizer.get_feature_names_out()
+
+    final_matrix = np.hstack((docs_compressed_norm, hp_normalized))
+
+    return final_matrix, vectorizer.get_feature_names_out()
 
 @app.route("/get_top_decks")
 def get_top_decks():
