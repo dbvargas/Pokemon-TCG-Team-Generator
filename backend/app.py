@@ -12,37 +12,22 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import MinMaxScaler, normalize
 from scipy.sparse.linalg import svds
 
-# Load environment variables first
-load_dotenv()
-
-# Enable demo mode to run without database
-DEMO_MODE = False
-
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
 os.environ['ROOT_PATH'] = os.path.abspath(os.path.join("..",os.curdir))
 
-# Set Docker mode to avoid MySQL connection issues
-if not DEMO_MODE:
-    os.environ['DB_NAME'] = 'pokemon_database'
-    os.environ['DB_USER'] = 'root'
-    os.environ['DB_PASSWORD'] = ''  # Empty password for demo
-    os.environ['DB_HOST'] = 'localhost'
-    os.environ['DB_PORT'] = '3306'
+# These are the DB credentials for your OWN MySQL
+# Don't worry about the deployment credentials, those are fixed
+# You can use a different DB name if you want to
+LOCAL_MYSQL_USER = "root"
+LOCAL_MYSQL_USER_PASSWORD = os.getenv("DB_PASSWORD")
+LOCAL_MYSQL_PORT = 3306
+LOCAL_MYSQL_DATABASE = "pokemon_database"
 
-    # These are the DB credentials for your OWN MySQL
-    # Don't worry about the deployment credentials, those are fixed
-    # You can use a different DB name if you want to
-    LOCAL_MYSQL_USER = os.getenv("DB_USER", "root")
-    LOCAL_MYSQL_USER_PASSWORD = os.getenv("DB_PASSWORD", "")
-    LOCAL_MYSQL_PORT = int(os.getenv("DB_PORT", 3306))
-    LOCAL_MYSQL_HOST = os.getenv("DB_HOST", "localhost")
-    LOCAL_MYSQL_DATABASE = os.getenv("DB_NAME", "pokemon_database")
+mysql_engine = MySQLDatabaseHandler(LOCAL_MYSQL_USER,LOCAL_MYSQL_USER_PASSWORD,LOCAL_MYSQL_PORT,LOCAL_MYSQL_DATABASE)
 
-    mysql_engine = MySQLDatabaseHandler(LOCAL_MYSQL_USER, LOCAL_MYSQL_USER_PASSWORD, LOCAL_MYSQL_PORT, LOCAL_MYSQL_DATABASE, LOCAL_MYSQL_HOST)
-
-    # Path to init.sql file. This file can be replaced with your own file for testing on localhost, but do NOT move the init.sql file
-    mysql_engine.load_file_into_db()
+# Path to init.sql file. This file can be replaced with your own file for testing on localhost, but do NOT move the init.sql file
+mysql_engine.load_file_into_db()
 
 app = Flask(__name__)
 CORS(app)
@@ -271,42 +256,25 @@ def create_deck_table():
     """
     mysql_engine.query_executor(query)
 
-if not DEMO_MODE:
-    create_deck_table()
+create_deck_table()
 
 @app.route("/")
 def home():
-    return render_template('base.html',title="Pokemon TCG Team Generator")
+    return render_template('base.html',title="sample html")
 
 @app.route("/type_search")
 def type_search():
-    if DEMO_MODE:
-        return json.dumps([
-            {"id": "swsh4-18", "title": "Charizard V", "descr": "Type Match Score: 0.900"},
-            {"id": "swsh4-19", "title": "Charizard VMAX", "descr": "Type Match Score: 0.850"},
-            {"id": "swsh1-36", "title": "Vulpix", "descr": "Type Match Score: 0.800"},
-            {"id": "swsh1-37", "title": "Ninetales", "descr": "Type Match Score: 0.750"}
-        ])
     selected_types = request.args.getlist('types[]')
     return type_cos_sim_search(selected_types)
 
 @app.route("/search_trainers")
 def search_trainers():
-    if DEMO_MODE:
-        return json.dumps([
-            {"id": "swsh4-189", "title": "Leon", "descr": "Draw 3 cards. During this turn, your Fire Pokémon's attacks do 30 more damage to your opponent's Active Pokémon."},
-            {"id": "swsh4-175", "title": "Poké Kid", "descr": "Search your deck for a Pokémon, reveal it, and put it into your hand. Then, shuffle your deck."},
-            {"id": "swsh4-177", "title": "Team Yell Grunt", "descr": "Put a Pokémon Tool card attached to 1 of your opponent's Pokémon into their hand."}
-        ])
     query = request.args.get("title", "")
     return search_trainer_cards(query)
 
 @app.route("/save_deck", methods=['POST'])
 def save_deck():
     try:
-        if DEMO_MODE:
-            return json.dumps({"success": True, "message": "Deck saved successfully (Demo Mode)"})
-            
         data = request.get_json()
         deck_name = data.get('name', 'Untitled Deck')
         cards = json.dumps(data.get('cards', []))
@@ -321,25 +289,6 @@ def save_deck():
 @app.route("/get_decks", methods=['GET'])
 def get_decks():
     try:
-        if DEMO_MODE:
-            # Return demo data with Charizard evolution line
-            return json.dumps({
-                "success": True, 
-                "decks": [
-                    {
-                        "id": 1,
-                        "name": "Demo Fire Deck",
-                        "cards": [
-                            {"id": "swsh4-18", "title": "Charizard V", "imageUrl": "https://images.pokemontcg.io/swsh4/18.png"},
-                            {"id": "swsh4-19", "title": "Charizard VMAX", "imageUrl": "https://images.pokemontcg.io/swsh4/19.png"},
-                            {"id": "swsh1-36", "title": "Vulpix", "imageUrl": "https://images.pokemontcg.io/swsh1/36.png"},
-                            {"id": "swsh1-37", "title": "Ninetales", "imageUrl": "https://images.pokemontcg.io/swsh1/37.png"}
-                        ],
-                        "created_at": "2023-04-15T10:30:00"
-                    }
-                ]
-            })
-            
         query = text("SELECT * FROM decks ORDER BY created_at DESC")
         results = mysql_engine.query_selector(query)
         decks = []
@@ -357,22 +306,6 @@ def get_decks():
 @app.route("/export_deck/<int:deck_id>", methods=['GET'])
 def export_deck(deck_id):
     try:
-        if DEMO_MODE:
-            return json.dumps({
-                "success": True, 
-                "deck": {
-                    "id": deck_id,
-                    "name": "Demo Fire Deck",
-                    "cards": [
-                        {"id": "swsh4-18", "title": "Charizard V", "imageUrl": "https://images.pokemontcg.io/swsh4/18.png"},
-                        {"id": "swsh4-19", "title": "Charizard VMAX", "imageUrl": "https://images.pokemontcg.io/swsh4/19.png"},
-                        {"id": "swsh1-36", "title": "Vulpix", "imageUrl": "https://images.pokemontcg.io/swsh1/36.png"},
-                        {"id": "swsh1-37", "title": "Ninetales", "imageUrl": "https://images.pokemontcg.io/swsh1/37.png"}
-                    ],
-                    "created_at": "2023-04-15T10:30:00"
-                }
-            })
-            
         query = text("SELECT * FROM decks WHERE id = :deck_id")
         results = mysql_engine.query_selector(query.bindparams(deck_id=deck_id))
         deck = None
@@ -394,9 +327,6 @@ def export_deck(deck_id):
 @app.route("/delete_deck/<int:deck_id>", methods=['DELETE'])
 def delete_deck(deck_id):
     try:
-        if DEMO_MODE:
-            return json.dumps({"success": True, "message": "Deck deleted successfully (Demo Mode)"})
-            
         query = text("DELETE FROM decks WHERE id = :deck_id")
         mysql_engine.query_executor(query.bindparams(deck_id=deck_id))
         return json.dumps({"success": True, "message": "Deck deleted successfully"})
@@ -405,29 +335,6 @@ def delete_deck(deck_id):
 
 @app.route("/card_details/<card_id>")
 def get_card_details(card_id):
-    if DEMO_MODE:
-        # Return demo data based on card ID
-        if "charizard" in card_id.lower() or card_id == "swsh4-18" or card_id == "swsh4-19":
-            return json.dumps({
-                "hp": "220",
-                "types": ["Fire"]
-            })
-        elif "vulpix" in card_id.lower() or card_id == "swsh1-36":
-            return json.dumps({
-                "hp": "70",
-                "types": ["Fire"]
-            })
-        elif "ninetales" in card_id.lower() or card_id == "swsh1-37":
-            return json.dumps({
-                "hp": "120",
-                "types": ["Fire"]
-            })
-        else:
-            return json.dumps({
-                "hp": "100", 
-                "types": ["Normal"]
-            })
-    
     query_sql = f"""SELECT * FROM allcards WHERE id = '{card_id}'"""
     print(f"Executing query: {query_sql}")  # Debug log
     data = list(mysql_engine.query_selector(query_sql))  # Convert to list
@@ -717,27 +624,6 @@ def svd_search(query, k=20):
 @app.route("/get_top_decks")
 def get_top_decks():
      try:
-         if DEMO_MODE:
-             return json.dumps({
-                 "success": True, 
-                 "decks": [
-                     {
-                         "player": "PlayTCG Champion",
-                         "placing": "1st",
-                         "deck_archetype": "Charizard VMAX",
-                         "event": "Demo Championship 2023",
-                         "link": "https://limitlesstcg.com/decks/demo"
-                     },
-                     {
-                         "player": "TCG Master",
-                         "placing": "2nd",
-                         "deck_archetype": "Pikachu VMAX",
-                         "event": "Demo Championship 2023",
-                         "link": "https://limitlesstcg.com/decks/demo"
-                     }
-                 ]
-             })
-         
          decks = get_top_limitless_decks()
          return json.dumps({"success": True, "decks": decks})
      except Exception as e:
@@ -745,13 +631,6 @@ def get_top_decks():
 
 @app.route("/episodes")
 def episodes_search():
-    if DEMO_MODE:
-        return json.dumps([
-            {"id": "swsh4-18", "title": "Charizard V", "descr": "Fire type Pokémon with 220 HP"},
-            {"id": "swsh4-19", "title": "Charizard VMAX", "descr": "Fire type Pokémon with 330 HP"},
-            {"id": "swsh1-36", "title": "Vulpix", "descr": "Fire type Pokémon with 70 HP"},
-            {"id": "swsh1-37", "title": "Ninetales", "descr": "Fire type Pokémon with 120 HP"}
-        ])
     text = request.args.get("title", "")
     return svd_search(text)
   
