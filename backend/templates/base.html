@@ -35,6 +35,9 @@
       <button class="section-toggle" id="saved-btn" onclick="showSection('saved')">
         Saved Decks
       </button>
+      <button class="section-toggle" id="ranked-btn" onclick="showSection('ranked')">
+        Ranked Decks
+      </button>
     </div>
 
     <div id="search-section">
@@ -96,6 +99,12 @@
         </div>
       </div>
     </div>
+
+    <div id="ranked-section" style="display: none">
+      <h2 style="text-align:center">Top 10 Ranked Decks</h2>
+      <div id="ranked-decks" class="deck-list" style="max-width: 900px; margin: 0 auto;"></div>
+    </div>
+    
   </div>
 
   <script>
@@ -225,16 +234,20 @@
       const searchBtn = document.getElementById("search-btn");
       const buildBtn = document.getElementById("build-btn");
       const savedBtn = document.getElementById("saved-btn");
+      const rankedSection = document.getElementById("ranked-section");
+      const rankedBtn = document.getElementById("ranked-btn");
 
       // Hide all sections
       searchSection.style.display = "none";
       buildSection.style.display = "none";
       savedSection.style.display = "none";
+      rankedSection.style.display = "none";
 
       // Remove selected class from all buttons
       searchBtn.classList.remove("selected-tab");
       buildBtn.classList.remove("selected-tab");
       savedBtn.classList.remove("selected-tab");
+      rankedBtn.classList.remove("selected-tab");
 
       // Show selected section and highlight button
       if (section === "search") {
@@ -246,7 +259,11 @@
       } else if (section === "saved") {
         savedSection.style.display = "block";
         savedBtn.classList.add("selected-tab");
-        loadSavedDecks(); // Load saved decks when switching to this section
+        loadSavedDecks();
+      } else if (section === "ranked") {
+        rankedSection.style.display = "block";
+        rankedBtn.classList.add("selected-tab");
+        loadRankedDecks(); 
       }
     }
 
@@ -561,6 +578,42 @@
       modal.style.display = 'none';
     }
 
+    function loadRankedDecks() {
+      console.log("Fetching ranked decks...");
+      fetch("/get_top_decks")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched ranked decks response:", data); // NEW LOG
+
+          const rankedDiv = document.getElementById('ranked-decks');
+          if (!data.success) {
+            rankedDiv.innerHTML = "<p>Failed to load ranked decks.</p>";
+            return;
+          }
+
+          if (!data.decks || data.decks.length === 0) {
+            rankedDiv.innerHTML = "<p>No ranked decks found.</p>";
+            return;
+          }
+
+          rankedDiv.innerHTML = "";
+          data.decks.forEach((deck, index) => {
+            const div = document.createElement("div");
+            div.className = "saved-deck";
+            div.innerHTML = `
+              <div class="deck-info">
+                <div><strong>#${deck.placing}</strong> - ${deck.deck_archetype} (${deck.player})</div>
+                <div>Event: ${deck.event}</div>
+                <a href="${deck.link}" target="_blank">View on Limitless</a>
+              </div>
+            `;
+            rankedDiv.appendChild(div);
+          });
+        })
+        .catch(error => {
+          console.error("Error loading ranked decks:", error);
+        });
+    }
     // Add event listener for closing modal
     document.addEventListener('DOMContentLoaded', function () {
       const modal = document.getElementById('cardModal');

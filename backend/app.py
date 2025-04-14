@@ -10,6 +10,7 @@ from sqlalchemy import text
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import MinMaxScaler
+import requests
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -244,6 +245,67 @@ def type_cos_sim_search(selected_types):
     
     return result
 
+def get_top_limitless_decks():
+    print("Fetching tournaments...")
+    response = requests.get("https://play.limitlesstcg.com/api/tournaments")
+    print("Status:", response.status_code)
+
+    if response.status_code != 200:
+        return []
+
+    tournaments = response.json()
+    print(f"Total tournaments: {len(tournaments)}")
+
+    top_decks = []
+    checked = 0
+
+    for t in tournaments:
+        if not t.get("id") or not t.get("name") or t.get("status") != "completed":
+            continue
+
+        tid = t["id"]
+        print(f"\nChecking tournament: {t['name']} (ID: {tid})")
+
+        standings_url = f"https://play.limitlesstcg.com/api/tournaments/{tid}/standings"
+        r = requests.get(standings_url)
+        print("Standings response:", r.status_code)
+
+        if r.status_code != 200:
+            continue
+
+        standings = r.json()
+        print(f"Found {len(standings)} players in standings.")
+
+        if not standings:
+            continue
+
+        for entry in standings[:5]:  # Try 5 per tournament
+            if not entry.get("deck_id"):
+                continue
+
+            print(f"Adding deck: {entry.get('player')} - {entry.get('archetype')}")
+
+            top_decks.append({
+                "player": entry.get("player", "Unknown"),
+                "placing": entry.get("placing", "?"),
+                "deck_archetype": entry.get("archetype", "Unknown"),
+                "event": t["name"],
+                "link": f"https://limitlesstcg.com/decks/{entry['deck_id']}"
+            })
+
+            if len(top_decks) >= 10:
+                print("Collected 10 decks, returning now.")
+                return top_decks
+
+        checked += 1
+        if checked >= 10:
+            break
+
+    print(f"Returning {len(top_decks)} decks.")
+    return top_decks
+
+
+
 def create_deck_table():
     query = """
     CREATE TABLE IF NOT EXISTS decks (
@@ -395,6 +457,13 @@ def process_tfidf():
 
     return jsonify(combined_data)
 
-if __name__ == '__main__':
-    if 'DB_NAME' not in os.environ:
-        app.run(debug=True, host="0.0.0.0", port=5000)
+@app.route("/get_top_decks")
+def get_top_decks():
+    try:
+        decks = get_top_limitless_decks()
+        return json.dumps({"success": True, "decks": decks})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e)})
+
+if 'DB_NAME' not in os.environ:
+    app.run(debug=True,host="0.0.0.0",port=5000)
