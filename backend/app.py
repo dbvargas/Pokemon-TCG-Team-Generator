@@ -85,35 +85,90 @@ def new_sql_search(query):
 
     return json.dumps([dict(zip(keys,[i[1][0],str(i[1][7]),i[0]])) for i in ranked_data[:20]])
 
-def search_trainer_cards(query):
+def svd_search(query, card_type='pokemon', k=20):
+    card_features, hp_values, card_ids, card_names = preprocess()
+    
+    if card_type.lower() == 'pokemon':
+        filtered_indices = [i for i, card in enumerate(card_features) if card['supertype'].lower() in ['pokemon', 'pokémon']]
+    else: 
+        filtered_indices = [i for i, card in enumerate(card_features) if card['supertype'].lower() == 'trainer']
+    
+    filtered_features = [card_features[i] for i in filtered_indices]
+    filtered_ids = [card_ids[i] for i in filtered_indices]
+    filtered_names = [card_names[i] for i in filtered_indices]
+    
     query = query.lower().strip()
-    words = re.split(r"[ -]", query)
+    query_terms = set(query.split())
     
-    base_sql = "SELECT id, name, supertype, rules FROM allcards WHERE LOWER(supertype) = 'trainer' AND ("
+    query_variations = set()
+    for term in query_terms:
+        query_variations.add(term)
+        query_variations.add(f"{term}-type")
+        query_variations.add(f"{term} type")
+        query_variations.add(f"{term} card")
+        if card_type.lower() == 'trainer':
+            query_variations.add(f"{term} trainer")
     
-    filters = []
-    for word in words:
-        if len(word) > 1:
-            filters.append(sql_like('name', word))
-        if len(word) > 2:
-            filters.append(f"(rules IS NOT NULL AND {sql_like('rules', word)})")
+    combined_texts = [
+        " ".join(card["types"] + card["subtypes"] + [card["supertype"], card["text"]])
+        for card in filtered_features
+    ]
+
+    vectorizer = TfidfVectorizer(stop_words="english", token_pattern=r'(?u)\b[a-zA-Z]{3,}\b')
+    tfidf_matrix = vectorizer.fit_transform(combined_texts)
+    docs_compressed, s, words_compressed = svds(tfidf_matrix, k=40)
+    docs_compressed = normalize(docs_compressed)
     
-    if not filters:
-        return json.dumps([])
-
-    query_sql = base_sql + " OR ".join(filters) + ") LIMIT 20"
-    print("TRAINER SQL:", query_sql)
-
-    data = mysql_engine.query_selector(query_sql)
-
-    return json.dumps([
-        {
-            "id": row[0],
-            "title": row[1],
-            "descr": row[3] or "No description"
-        }
-        for row in data
-    ])
+    if card_type.lower() == 'pokemon':
+        scaler = MinMaxScaler()
+        filtered_hp_values = [hp_values[i] for i in filtered_indices]
+        hp_normalized = scaler.fit_transform(np.array(filtered_hp_values).reshape(-1, 1))
+        final_matrix = np.hstack((docs_compressed, hp_normalized))
+    else:
+        final_matrix = docs_compressed
+    
+    query_vec = vectorizer.transform([query])
+    query_compressed = normalize(query_vec @ words_compressed.T)
+    
+    if card_type.lower() == 'pokemon':
+        query_combined = np.hstack((query_compressed, [[0.5]]))
+        sims = final_matrix @ query_combined.T
+    else:
+        sims = final_matrix @ query_compressed.T
+    
+    sims = sims.flatten()
+    sorted_indices = np.argsort(sims)[::-1][:k]
+    
+    feature_names = vectorizer.get_feature_names_out()
+    results = []
+    
+    for idx in sorted_indices:
+        if sims[idx] > 0:
+            card = filtered_features[idx]
+            
+            doc_vector = docs_compressed[idx]
+            top_dim_indices = np.argsort(np.abs(doc_vector))[-5:][::-1]
+            
+            dimension_tags = []
+            for dim_idx in top_dim_indices:
+                dim_weights = words_compressed[dim_idx]
+                top_term_indices = np.argsort(np.abs(dim_weights))[-5:][::-1]
+                top_terms = [feature_names[i] for i in top_term_indices]
+                dimension_tags.extend(top_terms)
+            
+            matching_tags = [tag for tag in dimension_tags if any(q in tag.lower() for q in query_variations)]
+            
+            if not matching_tags:
+                matching_tags = list(set(dimension_tags))[:10]
+            
+            results.append({
+                "id": filtered_ids[idx],
+                "title": filtered_names[idx],
+                "descr": f"Relevance: {sims[idx]:.2f}",
+                "tags": matching_tags
+            })
+    
+    return json.dumps(results)
 
 def get_prevolution(name, format_query):
     name = name.replace("'", "\\'")
@@ -270,7 +325,7 @@ def type_search():
 @app.route("/search_trainers")
 def search_trainers():
     query = request.args.get("title", "")
-    return search_trainer_cards(query)
+    return svd_search(query, 'trainer')
 
 @app.route("/save_deck", methods=['POST'])
 def save_deck():
@@ -357,6 +412,7 @@ def get_card_details(card_id):
         
         tags = []
         if card_index != -1:
+            
             combined_texts = [
                 " ".join(card["types"] + card["subtypes"] + [card["supertype"], card["text"]])
                 for card in card_features
@@ -413,10 +469,23 @@ def calculate_ranked_deck_similarity(card_id):
     types, abilities, attacks, subtypes, weaknesses, resistances, supertype, flavor_text, hp, name = row
     print(f"Card name: {name}, Types: {types}, HP: {hp}")
     
+    name = name if name else "Unknown"
+    types = types if types else "[]"
+    abilities = abilities if abilities else "[]"
+    attacks = attacks if attacks else "[]"
+    weaknesses = weaknesses if weaknesses else "[]"
+    resistances = resistances if resistances else "[]"
+    flavor_text = flavor_text if flavor_text else ""
+    
     abilities_text = parse_json_field(abilities)
     attacks_text = parse_json_field(attacks)
     weaknesses_text = parse_json_field(weaknesses)
     resistances_text = parse_json_field(resistances)
+    
+    if isinstance(types, str):
+        types = types.strip('[]').replace("'", "").split(',')
+        types = [t.strip() for t in types if t.strip()]
+    
     combined_text = " ".join(filter(None, [name] * 3 + types + [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
     types_list = parse_list_field(types)
     subtypes_list = parse_list_field(subtypes)
@@ -548,6 +617,8 @@ def parse_json_field(json_str):
 def parse_list_field(list_str):
     if list_str is None:
         return []
+    if isinstance(list_str, list):
+        return list_str
     try:
         list_str = list_str.replace("'", "\"")
         data = json.loads(list_str)
@@ -617,60 +688,6 @@ def compute_tfidf_with_hp():
 
     return final_matrix, vectorizer.get_feature_names_out()
 
-def svd_search(query, k=20):
-    card_features, hp_values, card_ids, card_name = preprocess()
-
-    combined_texts = [
-        " ".join(card["types"] + card["subtypes"] + [card["supertype"], card["text"]])
-        for card in card_features
-    ]
-
-    vectorizer = TfidfVectorizer(stop_words="english", token_pattern=r'(?u)\b[a-zA-Z]{3,}\b')
-    tfidf_matrix = vectorizer.fit_transform(combined_texts)
-    docs_compressed, s, words_compressed = svds(tfidf_matrix, k=40)
-    docs_compressed = normalize(docs_compressed)
-
-    scaler = MinMaxScaler()
-    hp_normalized = scaler.fit_transform(np.array(hp_values).reshape(-1, 1))
-    final_matrix = np.hstack((docs_compressed, hp_normalized))
-
-    query_vec = vectorizer.transform([query])
-    query_compressed = normalize(query_vec @ words_compressed.T)
-
-    query_combined = np.hstack((query_compressed, [[0.5]]))
-
-    sims = final_matrix @ query_combined.T
-    sims = sims.flatten()
-
-    sorted_indices = np.argsort(sims)[::-1][:k]
-
-    feature_names = vectorizer.get_feature_names_out()
-    
-    results = []
-    for idx in sorted_indices:
-        card = card_features[idx]
-        
-        doc_vector = docs_compressed[idx]
-        top_dim_indices = np.argsort(np.abs(doc_vector))
-        
-        dimension_tags = []
-        for dim_idx in top_dim_indices:
-            dim_weights = words_compressed[dim_idx]
-            top_term_indices = np.argsort(np.abs(dim_weights))
-            top_terms = [feature_names[i] for i in top_term_indices]
-            dimension_tags.extend(top_terms)
-        
-        dimension_tags = list(set(dimension_tags))
-        
-        results.append({
-            "id": card_ids[idx],
-            "title": card_name[idx],
-            "descr": card["text"],
-            "tags": dimension_tags
-        })
-
-    return json.dumps(results)
-
 @app.route("/get_top_decks")
 def get_top_decks():
      try:
@@ -682,7 +699,7 @@ def get_top_decks():
 @app.route("/episodes")
 def episodes_search():
     text = request.args.get("title", "")
-    return svd_search(text)
+    return svd_search(text, 'pokemon')
   
 if 'DB_NAME' not in os.environ:
      app.run(debug=True,host="0.0.0.0",port=5000)
