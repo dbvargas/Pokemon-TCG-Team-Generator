@@ -540,31 +540,31 @@ def calculate_ranked_deck_similarity(card_id):
     base_score = sum(scores.values())
     print(f"Base score: {base_score}")
     
-    # check_sql = f"""
-    # SELECT COUNT(*) FROM ranked_decks WHERE id_card = '{card_id}'
-    # """
-    # count_result = list(mysql_engine.query_selector(check_sql))
-    # tournament_count = count_result[0][0]
-    # print(f"Number of times this card appears in ranked_decks: {tournament_count}")
+    check_sql = f"""
+    SELECT COUNT(*) FROM ranked_decks WHERE id_card = '{card_id}'
+    """
+    count_result = list(mysql_engine.query_selector(check_sql))
+    tournament_count = count_result[0][0]
+    print(f"Number of times this card appears in ranked_decks: {tournament_count}")
     
-    # if tournament_count > 0:
-    #     query_sql = f"""
-    #     SELECT DISTINCT id_tournament, name_tournament, category_tournament
-    #     FROM ranked_decks 
-    #     WHERE id_card = '{card_id}'
-    #     """
-    #     deck_data = list(mysql_engine.query_selector(query_sql))
+    if tournament_count > 0:
+        query_sql = f"""
+        SELECT DISTINCT id_tournament, name_tournament, category_tournament
+        FROM ranked_decks 
+        WHERE id_card = '{card_id}'
+        """
+        deck_data = list(mysql_engine.query_selector(query_sql))
         
-    #     if deck_data:
-    #         tournament_bonus = min(tournament_count / 10, 0.3)
-    #         base_score *= (1 + tournament_bonus)
-    #         print(f"Applied tournament bonus: {tournament_bonus}")
+        if deck_data:
+            tournament_bonus = min(tournament_count / 10, 0.3)
+            base_score *= (1 + tournament_bonus)
+            print(f"Applied tournament bonus: {tournament_bonus}")
             
-    #         championship_count = sum(1 for deck in deck_data if deck[2] and "championship" in deck[2].lower())
-    #         if championship_count > 0:
-    #             championship_bonus = min(championship_count / 5, 0.2)
-    #             base_score *= (1 + championship_bonus)
-    #             print(f"Applied championship bonus: {championship_bonus}")
+            championship_count = sum(1 for deck in deck_data if deck[2] and "championship" in deck[2].lower())
+            if championship_count > 0:
+                championship_bonus = min(championship_count / 5, 0.2)
+                base_score *= (1 + championship_bonus)
+                print(f"Applied championship bonus: {championship_bonus}")
     
     final_score = base_score * 100
     if final_score < 20:
