@@ -287,8 +287,8 @@
       const searchBtn = document.getElementById("search-btn");
       const buildBtn = document.getElementById("build-btn");
       const savedBtn = document.getElementById("saved-btn");
-      // const rankedSection = document.getElementById("ranked-section");
-      // const rankedBtn = document.getElementById("ranked-btn");
+      const rankedSection = document.getElementById("ranked-section");
+      const rankedBtn = document.getElementById("ranked-btn");
 
       // Hide all sections
       searchSection.style.display = "none";
@@ -300,7 +300,7 @@
       searchBtn.classList.remove("selected-tab");
       buildBtn.classList.remove("selected-tab");
       savedBtn.classList.remove("selected-tab");
-      // rankedBtn.classList.remove("selected-tab");
+      rankedBtn.classList.remove("selected-tab");
 
       // Show selected section and highlight button
       if (section === "search") {
@@ -313,11 +313,11 @@
         savedSection.style.display = "block";
         savedBtn.classList.add("selected-tab");
         loadSavedDecks();
-      // } else if (section === "ranked") {
-      //   rankedSection.style.display = "block";
-      //   rankedBtn.classList.add("selected-tab");
-      //   loadRankedDecks(); 
-      // }
+      } else if (section === "ranked") {
+        rankedSection.style.display = "block";
+        rankedBtn.classList.add("selected-tab");
+        loadRankedDecks(); 
+      }
     }
 
     function generateDeck() {
@@ -652,42 +652,42 @@
       modal.style.display = 'none';
     }
 
-    // function loadRankedDecks() {
-    //   console.log("Fetching ranked decks...");
-    //   fetch("/get_top_decks")
-    //     .then(response => response.json())
-    //     .then(data => {
-    //       console.log("Fetched ranked decks response:", data); // NEW LOG
+    function loadRankedDecks() {
+      console.log("Fetching ranked decks...");
+      fetch("/get_top_decks")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched ranked decks response:", data); // NEW LOG
 
-    //       const rankedDiv = document.getElementById('ranked-decks');
-    //       if (!data.success) {
-    //         rankedDiv.innerHTML = "<p>Failed to load ranked decks.</p>";
-    //         return;
-    //       }
+          const rankedDiv = document.getElementById('ranked-decks');
+          if (!data.success) {
+            rankedDiv.innerHTML = "<p>Failed to load ranked decks.</p>";
+            return;
+          }
 
-    //       if (!data.decks || data.decks.length === 0) {
-    //         rankedDiv.innerHTML = "<p>No ranked decks found.</p>";
-    //         return;
-    //       }
+          if (!data.decks || data.decks.length === 0) {
+            rankedDiv.innerHTML = "<p>No ranked decks found.</p>";
+            return;
+          }
 
-    //       rankedDiv.innerHTML = "";
-    //       data.decks.forEach((deck, index) => {
-    //         const div = document.createElement("div");
-    //         div.className = "saved-deck";
-    //         div.innerHTML = `
-    //           <div class="deck-info">
-    //             <div><strong>#${deck.placing}</strong> - ${deck.deck_archetype} (${deck.player})</div>
-    //             <div>Event: ${deck.event}</div>
-    //             <a href="${deck.link}" target="_blank">View on Limitless</a>
-    //           </div>
-    //         `;
-    //         rankedDiv.appendChild(div);
-    //       });
-    //     })
-    //     .catch(error => {
-    //       console.error("Error loading ranked decks:", error);
-    //     });
-    // }
+          rankedDiv.innerHTML = "";
+          data.decks.forEach((deck, index) => {
+            const div = document.createElement("div");
+            div.className = "saved-deck";
+            div.innerHTML = `
+              <div class="deck-info">
+                <div><strong>#${deck.placing}</strong> - ${deck.deck_archetype} (${deck.player})</div>
+                <div>Event: ${deck.event}</div>
+                <a href="${deck.link}" target="_blank">View on Limitless</a>
+              </div>
+            `;
+            rankedDiv.appendChild(div);
+          });
+        })
+        .catch(error => {
+          console.error("Error loading ranked decks:", error);
+        });
+      }
     // Add event listener for closing modal
     document.addEventListener('DOMContentLoaded', function () {
       const modal = document.getElementById('cardModal');
