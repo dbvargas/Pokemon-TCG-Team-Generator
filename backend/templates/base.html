@@ -28,7 +28,6 @@
           <h2 id="modalCardName"></h2>
           <p>HP: <span id="modalCardHP"></span></p>
           <p>Type: <span id="modalCardType"></span></p>
-          <p>Similarity to ranked decks: <span id="modalCardSimilarity"></span></p>
           <div class="tags-container">
             <p>Relevant Tags:</p>
             <div id="modalCardTags" class="tags"></div>
@@ -676,7 +675,12 @@
               addCardToDeck(card.id, card.title, card.imageUrl);
             });
 
+            if (typeof updateDeckDisplay === 'function') {
+              updateDeckDisplay();
+            }
             updateDeckCount();
+            toggleDeckPopup();
+
             showSection('search');
           } else {
             alert('Error loading deck: ' + data.message);
@@ -808,7 +812,6 @@
       const modalCardName = document.getElementById('modalCardName');
       const modalCardHP = document.getElementById('modalCardHP');
       const modalCardType = document.getElementById('modalCardType');
-      const modalCardSimilarity = document.getElementById('modalCardSimilarity');
       const modalCardTags = document.getElementById('modalCardTags');
 
       const [setId, cardNumber] = cardId.split("-");
@@ -822,7 +825,6 @@
         .then(data => {
           modalCardHP.textContent = data.hp || 'N/A';
           modalCardType.textContent = data.types ? data.types.join(', ') : 'N/A';
-          modalCardSimilarity.textContent = data.similarity_score || 'N/A';
           
           modalCardTags.innerHTML = '';
           if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
@@ -840,7 +842,6 @@
           console.error('Error:', error);
           modalCardHP.textContent = 'N/A';
           modalCardType.textContent = 'N/A';
-          modalCardSimilarity.textContent = 'N/A';
           modalCardTags.innerHTML = '<span class="tag">Error loading tags</span>';
         });
 
