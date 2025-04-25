@@ -155,12 +155,16 @@
     function handleSearch(event) {
         const searchInput = document.getElementById('filter-text-val');
         const query = searchInput.value.trim();
-
-        event.preventDefault();
-        if (query && (query !== lastSearchQuery || searchMode !== lastSearchMode)) {
-          performSearch(query);
+        
+        // If Enter is pressed, perform search immediately
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (query && (query !== lastSearchQuery || searchMode !== lastSearchMode)) {
+                performSearch(query);
+            }
+            return;
         }
-        return;
+    }
 
     function performSearch(query) {
         if (!query) return;
