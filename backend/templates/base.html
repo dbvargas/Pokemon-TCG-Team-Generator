@@ -8,10 +8,9 @@
 
 <body>
   <div class="full-body-container">
-    <!-- Add deck popup -->
     <div id="deckPopup" class="deck-popup">
       <div class="deck-popup-header">
-        <h3>Current Deck (<span id="deck-count">0</span>/20)</h3>
+        <h3>Current Deck (<span id="deck-count">0</span>/60)</h3>
         <button class="minimize-button" onclick="toggleDeckPopup()">−</button>
       </div>
       <div id="deck-grid" class="deck-grid"></div>
@@ -21,7 +20,6 @@
       </div>
     </div>
 
-    <!-- Add modal HTML structure -->
     <div id="cardModal" class="modal">
       <div class="modal-content">
         <span class="close-modal">&times;</span>
@@ -53,9 +51,6 @@
       <button class="section-toggle" id="saved-btn" onclick="showSection('saved')">
         Saved Decks
       </button>
-      <!-- <button class="section-toggle" id="ranked-btn" onclick="showSection('ranked')">
-        Ranked Decks
-      </button> -->
     </div>
 
     <div id="search-section">
@@ -91,7 +86,61 @@
         <span class="type-label dragon" onclick="toggleType('Dragon', this)">Dragon</span>
       </div>
 
+      <div class="strategy-section">
+        <h3>Deck Strategy</h3>
+        <div class="strategy-labels">
+          <span>Strategy-focused</span>
+          <span>Balanced</span>
+          <span>Swarm-focused</span>
+        </div>
+        <input type="range" id="strategy-slider" min="0" max="100" value="50" class="strategy-slider">
+        <div class="strategy-description">
+          <p id="strategy-text">Balanced: Even distribution of Pokémon, Trainer, and Energy cards</p>
+        </div>
+
+        <h3 style="margin-top: 20px;">Risk Level</h3>
+        <div class="strategy-labels">
+          <span>Conservative</span>
+          <span>Balanced</span>
+          <span>Aggressive</span>
+        </div>
+        <input type="range" id="risk-slider" min="0" max="100" value="50" class="strategy-slider">
+        <div class="strategy-description">
+          <p id="risk-text">Balanced: Mix of stable and high-risk cards</p>
+        </div>
+      </div>
+
       <button class="generate-button" onclick="generateDeck()">Generate</button>
+      
+      <div id="deck-stats" style="display: none" class="deck-statistics">
+        <h3>Deck Composition</h3>
+        <div class="stat-bars">
+          <div class="stat-bar">
+            <label>Pokémon</label>
+            <div class="bar-container">
+              <div id="pokemon-bar" class="bar"></div>
+              <span id="pokemon-count"></span>
+            </div>
+          </div>
+          <div class="stat-bar">
+            <label>Trainer</label>
+            <div class="bar-container">
+              <div id="trainer-bar" class="bar"></div>
+              <span id="trainer-count"></span>
+            </div>
+          </div>
+          <div class="stat-bar">
+            <label>Energy</label>
+            <div class="bar-container">
+              <div id="energy-bar" class="bar"></div>
+              <span id="energy-count"></span>
+            </div>
+          </div>
+        </div>
+        <div id="type-distribution" class="type-distribution">
+        </div>
+      </div>
+
       <div id="build-selection-controls" class="selection-controls" style="margin: 15px 0; display: none;">
         <button class="action-button" onclick="selectAllBuildCards()">Select All</button>
         <button class="action-button" onclick="clearAllBuildCards()">Clear All</button>
@@ -102,15 +151,9 @@
     <div id="saved-section" style="display: none">
       <div class="deck-list" style="max-width: 1200px; margin: 0 auto;">
         <div id="saved-decks">
-          <!-- Decks will be loaded here -->
         </div>
       </div>
     </div>
-
-    <!-- <div id="ranked-section" style="display: none">
-      <h2 style="text-align:center">Top 10 Ranked Decks</h2>
-      <div id="ranked-decks" class="deck-list" style="max-width: 900px; margin: 0 auto;"></div>
-    </div> -->
     
   </div>
 
@@ -133,12 +176,112 @@
       color: rgb(66, 66, 66);
       margin-right: 5px;
     }
+
+    .strategy-section {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+      border-radius: 10px;
+    }
+
+    .strategy-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: #666;
+    }
+
+    .strategy-slider {
+      width: 100%;
+      height: 15px;
+      border-radius: 5px;
+      background: #ddd;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .strategy-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #4285f4;
+      cursor: pointer;
+    }
+
+    .strategy-description {
+      text-align: center;
+      margin-top: 10px;
+      color: #333;
+    }
+
+    .deck-statistics {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .stat-bars {
+      margin: 20px 0;
+    }
+
+    .stat-bar {
+      margin: 10px 0;
+    }
+
+    .stat-bar label {
+      display: inline-block;
+      width: 80px;
+      font-weight: bold;
+    }
+
+    .bar-container {
+      display: inline-flex;
+      align-items: center;
+      width: calc(100% - 90px);
+      margin-left: 10px;
+    }
+
+    .bar {
+      height: 20px;
+      background: #4285f4;
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+
+    #pokemon-bar { background: #ff6b6b; }
+    #trainer-bar { background: #4ecdc4; }
+    #energy-bar { background: #ffd93d; }
+
+    .bar-container span {
+      margin-left: 10px;
+      min-width: 40px;
+    }
+
+    .type-distribution {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .type-stat {
+      background: #f5f5f5;
+      padding: 8px 15px;
+      border-radius: 15px;
+      font-size: 14px;
+    }
   </style>
 
   <script>
     let searchMode = "pokemon"
     let currentDeck = JSON.parse(localStorage.getItem('currentDeck') || '[]');
-    const MAX_DECK_SIZE = 20;
+    const MAX_DECK_SIZE = 60;
     let searchTimeout;
     let isLoading = false;
     let lastSearchQuery = '';
@@ -156,7 +299,6 @@
         const searchInput = document.getElementById('filter-text-val');
         const query = searchInput.value.trim();
         
-        // If Enter is pressed, perform search immediately
         if (event.key === 'Enter') {
             event.preventDefault();
             if (query && (query !== lastSearchQuery || searchMode !== lastSearchMode)) {
@@ -230,14 +372,12 @@
         return;
       }
 
-      // Check if card is already in deck
       const isInDeck = currentDeck.some(card => card.id === id);
       if (isInDeck) {
         alert('This card is already in your deck!');
         return;
       }
 
-      // Add card to deck
       element.classList.add('selected');
       addCardToDeck(id, title, imageUrl);
       updateDeckCount();
@@ -265,7 +405,6 @@
         const cardElement = document.getElementById(`deck-card-${id}`);
         if (cardElement) cardElement.remove();
 
-        // Deselect card in search results if it exists
         const searchCard = document.querySelector(`.card-result .card-content.selected img[src*="${id}"]`);
         if (searchCard) {
           searchCard.parentElement.classList.remove('selected');
@@ -276,7 +415,6 @@
 
     function updateDeckCount() {
       document.getElementById('deck-count').textContent = currentDeck.length;
-      // Save to localStorage after updating count
       localStorage.setItem('currentDeck', JSON.stringify(currentDeck));
     }
 
@@ -287,22 +425,15 @@
       const searchBtn = document.getElementById("search-btn");
       const buildBtn = document.getElementById("build-btn");
       const savedBtn = document.getElementById("saved-btn");
-      // const rankedSection = document.getElementById("ranked-section");
-      // const rankedBtn = document.getElementById("ranked-btn");
 
-      // Hide all sections
       searchSection.style.display = "none";
       buildSection.style.display = "none";
       savedSection.style.display = "none";
-      // rankedSection.style.display = "none";
 
-      // Remove selected class from all buttons
       searchBtn.classList.remove("selected-tab");
       buildBtn.classList.remove("selected-tab");
       savedBtn.classList.remove("selected-tab");
-      // rankedBtn.classList.remove("selected-tab");
 
-      // Show selected section and highlight button
       if (section === "search") {
         searchSection.style.display = "block";
         searchBtn.classList.add("selected-tab");
@@ -313,61 +444,138 @@
         savedSection.style.display = "block";
         savedBtn.classList.add("selected-tab");
         loadSavedDecks();
-      } 
-      /* else if (section === "ranked") {
-        rankedSection.style.display = "block";
-        rankedBtn.classList.add("selected-tab");
-        loadRankedDecks(); 
-      } */
+      }
+    }
+
+    function updateStrategyDescription(value) {
+      const strategyText = document.getElementById('strategy-text');
+      if (value <= 40) {
+        strategyText.textContent = "Strategy-focused: Fewer Pokémon, more support cards and energy";
+      } else if (value >= 60) {
+        strategyText.textContent = "Swarm-focused: More Pokémon, fewer support cards";
+      } else {
+        strategyText.textContent = "Balanced: Even distribution of Pokémon, Trainer, and Energy cards";
+      }
+    }
+
+    function updateRiskDescription(value) {
+      const riskText = document.getElementById('risk-text');
+      if (value <= 40) {
+        riskText.textContent = "Conservative: Focus on stable, reliable cards with consistent effects";
+      } else if (value >= 60) {
+        riskText.textContent = "Aggressive: Include high-risk, high-reward cards with powerful effects";
+      } else {
+        riskText.textContent = "Balanced: Mix of stable and high-risk cards";
+      }
     }
 
     function generateDeck() {
       const answerBox = document.getElementById("type-answer-box");
       answerBox.innerHTML = "";
-      // Hide selection controls when generating new deck
       document.getElementById("build-selection-controls").style.display = "none";
+      document.getElementById("deck-stats").style.display = "none";
 
       const selectedTypes = Array.from(
         document.querySelectorAll(".type-label.selected")
       ).map((el) => el.textContent.trim());
 
       if (selectedTypes.length === 0) {
-        answerBox.innerHTML =
-          "<p>Please select at least one type to generate a deck</p>";
+        answerBox.innerHTML = "<p>Please select at least one type to generate a deck</p>";
         return;
       }
 
-      const params = new URLSearchParams();
-      selectedTypes.forEach((type) => params.append("types[]", type));
+      const strategyValue = parseInt(document.getElementById("strategy-slider").value);
+      const riskValue = parseInt(document.getElementById("risk-slider").value);
 
-      fetch("/type_search?" + params.toString())
-        .then((response) => response.json())
-        .then((data) => {
-          if (data && data.length > 0) {
-            data.forEach((row) => {
-              let tempDiv = document.createElement("div");
-              tempDiv.innerHTML = answerBoxTemplate(
-                row.id,
-                row.title,
-                row.descr
-              );
-              answerBox.appendChild(tempDiv);
-            });
-            // Show selection controls when cards are displayed
-            document.getElementById("build-selection-controls").style.display = "block";
-          } else {
-            answerBox.innerHTML = "<p>No cards found for selected types</p>";
-            // Keep selection controls hidden when no cards are found
-            document.getElementById("build-selection-controls").style.display = "none";
-          }
+      fetch("/generate_deck", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          types: selectedTypes,
+          strategy_value: strategyValue,
+          risk_value: riskValue
         })
-        .catch((error) => {
-          console.error("Error:", error);
-          answerBox.innerHTML = "<p>Error generating deck</p>";
-          // Hide selection controls on error
+      })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success && data.data.deck.length > 0) {
+          updateDeckStatistics(data.data.statistics);
+          
+          data.data.deck.forEach((card) => {
+            let tempDiv = document.createElement("div");
+            tempDiv.innerHTML = answerBoxTemplate(
+              card.id,
+              card.name,
+              `Type: ${card.supertype}`
+            );
+            answerBox.appendChild(tempDiv);
+          });
+          
+          document.getElementById("build-selection-controls").style.display = "block";
+          document.getElementById("deck-stats").style.display = "block";
+        } else {
+          answerBox.innerHTML = "<p>No cards found for selected types</p>";
           document.getElementById("build-selection-controls").style.display = "none";
-        });
+          document.getElementById("deck-stats").style.display = "none";
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        answerBox.innerHTML = "<p>Error generating deck</p>";
+        document.getElementById("build-selection-controls").style.display = "none";
+        document.getElementById("deck-stats").style.display = "none";
+      });
     }
+
+    function updateDeckStatistics(stats) {
+      const total = stats.pokemon_count + stats.trainer_count + stats.energy_count;
+      
+      document.getElementById('pokemon-bar').style.width = `${(stats.pokemon_count / total) * 100}%`;
+      document.getElementById('trainer-bar').style.width = `${(stats.trainer_count / total) * 100}%`;
+      document.getElementById('energy-bar').style.width = `${(stats.energy_count / total) * 100}%`;
+      
+      document.getElementById('pokemon-count').textContent = `${stats.pokemon_count}`;
+      document.getElementById('trainer-count').textContent = `${stats.trainer_count}`;
+      document.getElementById('energy-count').textContent = `${stats.energy_count}`;
+      
+      const typeDistribution = document.getElementById('type-distribution');
+      typeDistribution.innerHTML = '<h4>Type Distribution</h4>';
+      
+      Object.entries(stats.pokemon_type_distribution).forEach(([type, count]) => {
+        const typeDiv = document.createElement('div');
+        typeDiv.className = `type-stat ${type.toLowerCase()}`;
+        typeDiv.textContent = `${type}: ${count} Pokémon`;
+        typeDistribution.appendChild(typeDiv);
+      });
+      
+      Object.entries(stats.energy_type_distribution).forEach(([type, count]) => {
+        const typeDiv = document.createElement('div');
+        typeDiv.className = `type-stat ${type.toLowerCase()}`;
+        typeDiv.textContent = `${type}: ${count} Energy`;
+        typeDistribution.appendChild(typeDiv);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const strategySlider = document.getElementById('strategy-slider');
+      const riskSlider = document.getElementById('risk-slider');
+      
+      if (strategySlider) {
+        strategySlider.addEventListener('input', function() {
+          updateStrategyDescription(this.value);
+        });
+        updateStrategyDescription(strategySlider.value);
+      }
+      
+      if (riskSlider) {
+        riskSlider.addEventListener('input', function() {
+          updateRiskDescription(this.value);
+        });
+        updateRiskDescription(riskSlider.value);
+      }
+    });
 
     function loadSavedDecks() {
       fetch("/get_decks")
@@ -415,7 +623,7 @@
         .then(data => {
           if (data.success) {
             alert('Deck deleted successfully!');
-            loadSavedDecks(); // Refresh the list
+            loadSavedDecks();
           } else {
             alert('Error deleting deck: ' + data.message);
           }
@@ -460,19 +668,15 @@
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            // Clear current deck
             currentDeck = [];
             const deckGrid = document.getElementById('deck-grid');
             deckGrid.innerHTML = '';
 
-            // Load saved deck
             data.deck.cards.forEach(card => {
               addCardToDeck(card.id, card.title, card.imageUrl);
             });
 
             updateDeckCount();
-
-            // Switch to search view
             showSection('search');
           } else {
             alert('Error loading deck: ' + data.message);
@@ -598,7 +802,6 @@
       }
     }
 
-    // Add these new functions for modal handling
     function openCardModal(cardId, cardTitle) {
       const modal = document.getElementById('cardModal');
       const modalImg = document.getElementById('modalImage');
@@ -608,15 +811,12 @@
       const modalCardSimilarity = document.getElementById('modalCardSimilarity');
       const modalCardTags = document.getElementById('modalCardTags');
 
-      // Use the same image URL format as in answerBoxTemplate
       const [setId, cardNumber] = cardId.split("-");
       modalImg.src = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
       modalCardName.textContent = cardTitle;
 
-      // Get current search query
       const searchQuery = document.getElementById('filter-text-val').value.trim();
 
-      // Fetch card details from the server with the search query
       fetch(`/card_details/${cardId}?query=${encodeURIComponent(searchQuery)}`)
         .then(response => response.json())
         .then(data => {
@@ -624,7 +824,6 @@
           modalCardType.textContent = data.types ? data.types.join(', ') : 'N/A';
           modalCardSimilarity.textContent = data.similarity_score || 'N/A';
           
-          // Update tags
           modalCardTags.innerHTML = '';
           if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
             data.tags.forEach(tag => {
@@ -653,43 +852,6 @@
       modal.style.display = 'none';
     }
 
-    // function loadRankedDecks() {
-    //   console.log("Fetching ranked decks...");
-    //   fetch("/get_top_decks")
-    //     .then(response => response.json())
-    //     .then(data => {
-    //       console.log("Fetched ranked decks response:", data); // NEW LOG
-
-    //       const rankedDiv = document.getElementById('ranked-decks');
-    //       if (!data.success) {
-    //         rankedDiv.innerHTML = "<p>Failed to load ranked decks.</p>";
-    //         return;
-    //       }
-
-    //       if (!data.decks || data.decks.length === 0) {
-    //         rankedDiv.innerHTML = "<p>No ranked decks found.</p>";
-    //         return;
-    //       }
-
-    //       rankedDiv.innerHTML = "";
-    //       data.decks.forEach((deck, index) => {
-    //         const div = document.createElement("div");
-    //         div.className = "saved-deck";
-    //         div.innerHTML = `
-    //           <div class="deck-info">
-    //             <div><strong>#${deck.placing}</strong> - ${deck.deck_archetype} (${deck.player})</div>
-    //             <div>Event: ${deck.event}</div>
-    //             <a href="${deck.link}" target="_blank">View on Limitless</a>
-    //           </div>
-    //         `;
-    //         rankedDiv.appendChild(div);
-    //       });
-    //     })
-    //     .catch(error => {
-    //       console.error("Error loading ranked decks:", error);
-    //     });
-    //   }
-    // Add event listener for closing modal
     document.addEventListener('DOMContentLoaded', function () {
       const modal = document.getElementById('cardModal');
       const closeBtn = document.querySelector('.close-modal');
@@ -703,7 +865,6 @@
       };
     });
 
-    // Check for deck to load from saved decks page to make sure it loads when the page is refreshed
     window.addEventListener('load', function () {
       const loadDeckId = sessionStorage.getItem('loadDeckId');
       if (loadDeckId) {
@@ -713,7 +874,6 @@
     });
   </script>
   
-  <!-- Include the external script file -->
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

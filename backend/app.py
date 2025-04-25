@@ -701,5 +701,236 @@ def episodes_search():
     text = request.args.get("title", "")
     return svd_search(text, 'pokemon')
   
+@app.route("/generate_deck", methods=['POST'])
+def generate_deck():
+    try:
+        data = request.get_json()
+        selected_types = data.get('types', [])
+        strategy_value = data.get('strategy_value', 50)
+        risk_value = data.get('risk_value', 50)
+        
+        print(f"Received request with types: {selected_types}, strategy: {strategy_value}, risk: {risk_value}")
+        
+        if not selected_types:
+            print("No types selected")
+            return json.dumps({"success": False, "message": "No types selected"}), 400
+            
+        result = generate_deck_with_strategy(selected_types, strategy_value)
+        print(f"Generated deck with {len(result['deck'])} cards")
+        print(f"Pokemon: {result['statistics']['pokemon_count']}")
+        print(f"Trainer: {result['statistics']['trainer_count']}")
+        print(f"Energy: {result['statistics']['energy_count']}")
+        
+        if len(result['deck']) == 0:
+            print("Warning: Generated deck is empty")
+            
+        return json.dumps({"success": True, "data": result})
+    except Exception as e:
+        print(f"Error in generate_deck: {str(e)}")
+        return json.dumps({"success": False, "message": str(e)}), 500
+
+def generate_deck_with_strategy(selected_types, strategy_value):
+    DECK_SIZE = 60
+    
+    if strategy_value <= 40:
+        pokemon_percentage = 0.25
+        trainer_percentage = 0.45
+        energy_percentage = 0.30
+    elif strategy_value >= 60:
+        pokemon_percentage = 0.45
+        trainer_percentage = 0.35
+        energy_percentage = 0.20
+    else:
+        pokemon_percentage = 0.33
+        trainer_percentage = 0.40
+        energy_percentage = 0.27
+
+    num_pokemon = int(DECK_SIZE * pokemon_percentage)
+    num_trainers = int(DECK_SIZE * trainer_percentage)
+    num_energy = DECK_SIZE - num_pokemon - num_trainers
+
+    num_types = len(selected_types)
+    pokemon_per_type = num_pokemon // num_types if num_types > 0 else num_pokemon
+    remaining_pokemon = num_pokemon - (pokemon_per_type * num_types)
+
+    pokemon_cards = []
+    for type_name in selected_types:
+        safe_type = type_name.replace("'", "''")
+        type_pattern = f"%['{safe_type}']%"
+        
+        type_query = text(f"""
+        SELECT * FROM allcards 
+        WHERE supertype = 'Pokémon' 
+        AND types LIKE :type_pattern
+        AND (
+            subtypes LIKE '%Basic%' 
+            OR subtypes LIKE '%Stage 1%'
+            OR subtypes LIKE '%Stage 2%'
+            OR subtypes LIKE '%V%'
+            OR subtypes LIKE '%VMAX%'
+        )
+        ORDER BY RAND()
+        LIMIT :limit
+        """)
+        
+        type_pokemon = list(mysql_engine.query_selector(
+            type_query.bindparams(
+                type_pattern=type_pattern,
+                limit=pokemon_per_type + remaining_pokemon
+            )
+        ))
+        pokemon_cards.extend(type_pokemon)
+        remaining_pokemon = 0
+
+    type_conditions = []
+    for type_name in selected_types:
+        safe_type = type_name.replace("'", "''")
+        type_conditions.append(f"rules LIKE '%{safe_type}%'")
+    type_conditions = " OR ".join(type_conditions)
+    
+    if strategy_value <= 40:
+        trainer_query = text("""
+        SELECT * FROM allcards 
+        WHERE supertype = 'Trainer' 
+        AND (subtypes LIKE '%Item%' OR subtypes LIKE '%Supporter%')
+        AND (
+            """ + type_conditions + """
+            OR rules LIKE '%search%'
+            OR rules LIKE '%draw%'
+            OR rules LIKE '%evolve%'
+        )
+        ORDER BY RAND()
+        LIMIT :limit
+        """)
+    else:
+        trainer_query = text("""
+        SELECT * FROM allcards 
+        WHERE supertype = 'Trainer'
+        AND (
+            """ + type_conditions + """
+            OR rules LIKE '%search%'
+            OR rules LIKE '%draw%'
+        )
+        ORDER BY RAND()
+        LIMIT :limit
+        """)
+
+    trainer_cards = list(mysql_engine.query_selector(trainer_query.bindparams(limit=num_trainers)))
+
+    energy_per_type = num_energy // num_types
+    remaining_energy = num_energy - (energy_per_type * num_types)
+    
+    energy_cards = []
+    for type_name in selected_types:
+        safe_type = type_name.replace("'", "''")
+        type_pattern = f"%['{safe_type}']%"
+        
+        energy_query = text(f"""
+        SELECT * FROM allcards 
+        WHERE supertype = 'Energy' 
+        AND (
+            types LIKE :type_pattern
+            OR (name LIKE '%Special%' AND rules LIKE :rules_pattern)
+        )
+        ORDER BY RAND()
+        LIMIT :limit
+        """)
+        
+        type_energy = list(mysql_engine.query_selector(
+            energy_query.bindparams(
+                type_pattern=type_pattern,
+                rules_pattern=f"%{safe_type}%",
+                limit=energy_per_type + remaining_energy
+            )
+        ))
+        energy_cards.extend(type_energy)
+        remaining_energy = 0
+
+    if len(trainer_cards) < num_trainers:
+        generic_trainer_query = text("""
+        SELECT * FROM allcards 
+        WHERE supertype = 'Trainer'
+        AND id NOT IN :existing_ids
+        ORDER BY RAND()
+        LIMIT :limit
+        """)
+        
+        existing_ids = tuple([card[0] for card in trainer_cards]) or ('',)
+        additional_trainers = list(mysql_engine.query_selector(
+            generic_trainer_query.bindparams(
+                existing_ids=existing_ids,
+                limit=num_trainers - len(trainer_cards)
+            )
+        ))
+        trainer_cards.extend(additional_trainers)
+
+    if len(energy_cards) < num_energy:
+        generic_energy_query = text("""
+        SELECT * FROM allcards 
+        WHERE supertype = 'Energy'
+        AND id NOT IN :existing_ids
+        ORDER BY RAND()
+        LIMIT :limit
+        """)
+        
+        existing_ids = tuple([card[0] for card in energy_cards]) or ('',)
+        additional_energy = list(mysql_engine.query_selector(
+            generic_energy_query.bindparams(
+                existing_ids=existing_ids,
+                limit=num_energy - len(energy_cards)
+            )
+        ))
+        energy_cards.extend(additional_energy)
+
+    deck = []
+    
+    for card in pokemon_cards:
+        deck.append({
+            "id": card[0],
+            "name": card[7],
+            "supertype": "Pokémon",
+            "types": parse_list_field(card[9]) if card[9] else [],
+            "hp": card[13] if card[13] else "N/A",
+            "subtypes": parse_list_field(card[8]) if card[8] else []
+        })
+    
+    for card in trainer_cards:
+        deck.append({
+            "id": card[0],
+            "name": card[7],
+            "supertype": "Trainer",
+            "subtype": card[8] if card[8] else "N/A",
+            "rules": card[26] if card[26] else ""
+        })
+    
+    for card in energy_cards:
+        deck.append({
+            "id": card[0],
+            "name": card[7],
+            "supertype": "Energy",
+            "rules": card[26] if card[26] else ""
+        })
+
+    return {
+        "deck": deck,
+        "statistics": {
+            "pokemon_count": len(pokemon_cards),
+            "trainer_count": len(trainer_cards),
+            "energy_count": len(energy_cards),
+            "strategy_value": strategy_value,
+            "selected_types": selected_types,
+            "pokemon_type_distribution": {
+                type_name: len([card for card in pokemon_cards 
+                              if card[9] and type_name in str(card[9])]) 
+                for type_name in selected_types
+            },
+            "energy_type_distribution": {
+                type_name: len([card for card in energy_cards 
+                              if type_name in str(card[7]) or (card[26] and type_name in str(card[26]))]) 
+                for type_name in selected_types
+            }
+        }
+    }
+
 if 'DB_NAME' not in os.environ:
      app.run(debug=True,host="0.0.0.0",port=5000)
