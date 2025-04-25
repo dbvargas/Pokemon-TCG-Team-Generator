@@ -38,7 +38,7 @@ For the initial setup each member would have to complete the following
 Make sure **mysql -u root -p** is running SQL:
 - CREATE DATABASE pokemon_database;
 - USE pokemon_database;
-- SOURCE <COPY PATH OF allcards.sql>
+- SOURCE <COPY PATH OF init.sql>
 
 
 ### Step 5: Running the project 
