@@ -417,7 +417,7 @@ def calculate_ranked_deck_similarity(card_id):
     attacks_text = parse_json_field(attacks)
     weaknesses_text = parse_json_field(weaknesses)
     resistances_text = parse_json_field(resistances)
-    combined_text = " ".join(filter(None, [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
+    combined_text = " ".join(filter(None, [name] * 3 + types + [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
     types_list = parse_list_field(types)
     subtypes_list = parse_list_field(subtypes)
     print(f"Parsed types: {types_list}, Parsed subtypes: {subtypes_list}")
@@ -519,7 +519,7 @@ def extract_and_preprocess_card_features_with_flavor_text():
         weaknesses_text = parse_json_field(weaknesses)
         resistances_text = parse_json_field(resistances)
         
-        combined_text = " ".join(filter(None, [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
+        combined_text = " ".join(filter(None, [name] * 3 + types + [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
         
         types_list = parse_list_field(types)
         subtypes_list = parse_list_field(subtypes)
@@ -576,13 +576,13 @@ def preprocess():
         weaknesses_text = parse_json_field(weaknesses)
         resistances_text = parse_json_field(resistances)
         
-        combined_text = " ".join(filter(None, [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text]))
-        
         types_list = parse_list_field(types)
         subtypes_list = parse_list_field(subtypes)
         
         card_ids.append(card_id)
         card_names.append(name)
+        hp_category = 'high hp' if hp and hp > 200 else 'low hp'
+        combined_text = " ".join(filter(None, [name] * 3 + types_list + subtypes_list + [abilities_text, attacks_text, weaknesses_text, resistances_text, flavor_text, hp_category]))
         card_features.append({
             "types": types_list,
             "subtypes": subtypes_list,
