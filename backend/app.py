@@ -336,27 +336,61 @@ def delete_deck(deck_id):
 @app.route("/card_details/<card_id>")
 def get_card_details(card_id):
     query_sql = f"""SELECT * FROM allcards WHERE id = '{card_id}'"""
-    print(f"Executing query: {query_sql}")  # Debug log
-    data = list(mysql_engine.query_selector(query_sql))  # Convert to list
+    print(f"Executing query: {query_sql}") 
+    data = list(mysql_engine.query_selector(query_sql))
     if data:
         row = data[0]
-        print(f"Full row data: {row}")  # Debug log
+        print(f"Full row data: {row}") 
         
-        # HP is at index 13 for Pokemon cards
+        title = row[7] if row[7] else "N/A"
+        
         hp = row[13] if row[13] else "N/A"
+        
         types_str = row[9] if row[9] else "[]"
         types = types_str.strip('[]').replace("'", "").split(',')
         types = [t.strip() for t in types if t.strip()]
         
-        # Calculate similarity score
         similarity_score = calculate_ranked_deck_similarity(card_id)
         
+        card_features, hp_values, card_ids, card_names = preprocess()
+        card_index = card_ids.index(card_id) if card_id in card_ids else -1
+        
+        tags = []
+        if card_index != -1:
+            combined_texts = [
+                " ".join(card["types"] + card["subtypes"] + [card["supertype"], card["text"]])
+                for card in card_features
+            ]
+            
+            vectorizer = TfidfVectorizer(stop_words="english", token_pattern=r'(?u)\b[a-zA-Z]{3,}\b')
+            tfidf_matrix = vectorizer.fit_transform(combined_texts)
+            docs_compressed, s, words_compressed = svds(tfidf_matrix, k=40)
+            docs_compressed = normalize(docs_compressed)
+            
+            doc_vector = docs_compressed[card_index]
+            feature_names = vectorizer.get_feature_names_out()
+            
+            top_dims = np.argsort(np.abs(doc_vector))[-10:][::-1]
+            term_scores = {}
+
+            for dim in top_dims:
+                weights = words_compressed[dim]
+                top_term_indices = np.argsort(np.abs(weights))[-10:]
+                for idx in top_term_indices:
+                    term = feature_names[idx]
+                    term_scores[term] = term_scores.get(term, 0) + abs(weights[idx])
+            
+            sorted_terms = sorted(term_scores.items(), key=lambda x: x[1], reverse=True)
+            tags = [term for term, _ in sorted_terms[:10]]
+        
         response = {
+            "title": title,
             "hp": hp,
             "types": types if types else ["N/A"],
-            "similarity_score": f"{similarity_score:.1f}%"
+            "similarity_score": f"{similarity_score:.1f}%",
+            "tags": tags
         }
-        print(f"Final response: {response}")  # Debug log
+        print(f"Final response: {response}") 
         return json.dumps(response)
     return json.dumps({"error": "Card not found"}), 404
 
@@ -437,31 +471,31 @@ def calculate_ranked_deck_similarity(card_id):
     base_score = sum(scores.values())
     print(f"Base score: {base_score}")
     
-    check_sql = f"""
-    SELECT COUNT(*) FROM ranked_decks WHERE id_card = '{card_id}'
-    """
-    count_result = list(mysql_engine.query_selector(check_sql))
-    tournament_count = count_result[0][0]
-    print(f"Number of times this card appears in ranked_decks: {tournament_count}")
+    # check_sql = f"""
+    # SELECT COUNT(*) FROM ranked_decks WHERE id_card = '{card_id}'
+    # """
+    # count_result = list(mysql_engine.query_selector(check_sql))
+    # tournament_count = count_result[0][0]
+    # print(f"Number of times this card appears in ranked_decks: {tournament_count}")
     
-    if tournament_count > 0:
-        query_sql = f"""
-        SELECT DISTINCT id_tournament, name_tournament, category_tournament
-        FROM ranked_decks 
-        WHERE id_card = '{card_id}'
-        """
-        deck_data = list(mysql_engine.query_selector(query_sql))
+    # if tournament_count > 0:
+    #     query_sql = f"""
+    #     SELECT DISTINCT id_tournament, name_tournament, category_tournament
+    #     FROM ranked_decks 
+    #     WHERE id_card = '{card_id}'
+    #     """
+    #     deck_data = list(mysql_engine.query_selector(query_sql))
         
-        if deck_data:
-            tournament_bonus = min(tournament_count / 10, 0.3)
-            base_score *= (1 + tournament_bonus)
-            print(f"Applied tournament bonus: {tournament_bonus}")
+    #     if deck_data:
+    #         tournament_bonus = min(tournament_count / 10, 0.3)
+    #         base_score *= (1 + tournament_bonus)
+    #         print(f"Applied tournament bonus: {tournament_bonus}")
             
-            championship_count = sum(1 for deck in deck_data if deck[2] and "championship" in deck[2].lower())
-            if championship_count > 0:
-                championship_bonus = min(championship_count / 5, 0.2)
-                base_score *= (1 + championship_bonus)
-                print(f"Applied championship bonus: {championship_bonus}")
+    #         championship_count = sum(1 for deck in deck_data if deck[2] and "championship" in deck[2].lower())
+    #         if championship_count > 0:
+    #             championship_bonus = min(championship_count / 5, 0.2)
+    #             base_score *= (1 + championship_bonus)
+    #             print(f"Applied championship bonus: {championship_bonus}")
     
     final_score = base_score * 100
     if final_score < 20:
@@ -568,7 +602,7 @@ def compute_tfidf_with_hp():
         
         # Print the combined text for each card print("Combined Text for Card:", combined_text)
 
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(stop_words="english", token_pattern=r'(?u)\b[a-zA-Z]{3,}\b')
     tfidf_matrix = vectorizer.fit_transform(combined_texts)
 
     # SVD Decomposition, Inspired by SVD Demo
@@ -591,7 +625,7 @@ def svd_search(query, k=20):
         for card in card_features
     ]
 
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(stop_words="english", token_pattern=r'(?u)\b[a-zA-Z]{3,}\b')
     tfidf_matrix = vectorizer.fit_transform(combined_texts)
     docs_compressed, s, words_compressed = svds(tfidf_matrix, k=40)
     docs_compressed = normalize(docs_compressed)
@@ -610,13 +644,29 @@ def svd_search(query, k=20):
 
     sorted_indices = np.argsort(sims)[::-1][:k]
 
+    feature_names = vectorizer.get_feature_names_out()
+    
     results = []
     for idx in sorted_indices:
         card = card_features[idx]
+        
+        doc_vector = docs_compressed[idx]
+        top_dim_indices = np.argsort(np.abs(doc_vector))
+        
+        dimension_tags = []
+        for dim_idx in top_dim_indices:
+            dim_weights = words_compressed[dim_idx]
+            top_term_indices = np.argsort(np.abs(dim_weights))
+            top_terms = [feature_names[i] for i in top_term_indices]
+            dimension_tags.extend(top_terms)
+        
+        dimension_tags = list(set(dimension_tags))
+        
         results.append({
             "id": card_ids[idx],
             "title": card_name[idx],
-            "descr": card["text"]
+            "descr": card["text"],
+            "tags": dimension_tags
         })
 
     return json.dumps(results)

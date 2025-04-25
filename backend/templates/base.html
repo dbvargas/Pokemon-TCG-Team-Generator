@@ -31,6 +31,10 @@
           <p>HP: <span id="modalCardHP"></span></p>
           <p>Type: <span id="modalCardType"></span></p>
           <p>Similarity to ranked decks: <span id="modalCardSimilarity"></span></p>
+          <div class="tags-container">
+            <p>Relevant Tags:</p>
+            <div id="modalCardTags" class="tags"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -61,9 +65,9 @@
         <button class="action-button" id="search-trainer-btn" onclick="setSearchMode('trainer')">Search Trainer</button>
       </div>
       <div class="input-box" onclick="sendFocus()">
-        <img src="{{ url_for('static', filename='images/mag.png') }}" />
+        <img src="{{ url_for('static', filename='images/mag.png') }}" alt="Search icon" />
         <input placeholder="Enter a query on what kind of pokemon deck you want to generate" id="filter-text-val"
-          onkeyup="filterText()" />
+          onkeyup="handleSearch(event)" />
       </div>
       <div id="search-selection-controls" class="selection-controls" style="margin: 10px 0; display: none;">
         <button class="action-button" onclick="selectAllCards()">Select All</button>
@@ -110,10 +114,35 @@
     
   </div>
 
+  <style>
+    .tags-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .tags {
+      margin-top: 5px;
+    }
+
+    .tag {
+      background-color: rgb(242, 241, 241);
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 16px;
+      color: rgb(66, 66, 66);
+      margin-right: 5px;
+    }
+  </style>
+
   <script>
     let searchMode = "pokemon"
     let currentDeck = JSON.parse(localStorage.getItem('currentDeck') || '[]');
     const MAX_DECK_SIZE = 20;
+    let searchTimeout;
+    let isLoading = false;
+    let lastSearchQuery = '';
+    let lastSearchMode = '';
 
     function toggleType(type, element) {
       element.classList.toggle("selected");
@@ -123,45 +152,59 @@
       document.getElementById("filter-text-val").focus();
     }
 
-    function filterText() {
-      console.log("filterText function called");
-      const answerBox = document.getElementById("answer-box");
-      answerBox.innerHTML = "";
-      const title = document.getElementById("filter-text-val").value.trim();
+    function handleSearch(event) {
+        const searchInput = document.getElementById('filter-text-val');
+        const query = searchInput.value.trim();
 
-
-      if (title === "") {
+        event.preventDefault();
+        if (query && (query !== lastSearchQuery || searchMode !== lastSearchMode)) {
+          performSearch(query);
+        }
         return;
-      }
 
+    function performSearch(query) {
+        if (!query) return;
+        
+        lastSearchQuery = query;
+        lastSearchMode = searchMode;
+        isLoading = true;
+        
+        const resultsContainer = document.getElementById('answer-box');
+        if (resultsContainer) {
+            resultsContainer.innerHTML = '<div class="loading">Loading...</div>';
+        }
 
-      let endpoint = searchMode === "trainer" ? "/search_trainers" : "/episodes";
-      fetch(endpoint + "?" + new URLSearchParams({ title }).toString())
-        .then((response) => response.json())
-        .then((data) => {
-          if (data && data.length > 0) {
-            data.forEach((row) => {
-              let tempDiv = document.createElement("div");
-              tempDiv.innerHTML = answerBoxTemplate(
-                row.id,
-                row.title,
-                row.descr
-              );
-              answerBox.appendChild(tempDiv);
+        let endpoint = searchMode === "trainer" ? "/search_trainers" : "/episodes";
+        fetch(endpoint + "?" + new URLSearchParams({ title: query }).toString())
+            .then((response) => response.json())
+            .then((data) => {
+                if (data && data.length > 0) {
+                    const answerBox = document.getElementById("answer-box");
+                    answerBox.innerHTML = "";
+                    data.forEach((row) => {
+                        let tempDiv = document.createElement("div");
+                        tempDiv.innerHTML = answerBoxTemplate(
+                            row.id,
+                            row.title,
+                            row.descr
+                        );
+                        answerBox.appendChild(tempDiv);
+                    });
+                    document.getElementById("search-selection-controls").style.display = "block";
+                } else {
+                    const answerBox = document.getElementById("answer-box");
+                    answerBox.innerHTML = "<p>No results found</p>";
+                    document.getElementById("search-selection-controls").style.display = "none";
+                }
+                isLoading = false;
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                const answerBox = document.getElementById("answer-box");
+                answerBox.innerHTML = "<p>Error loading results</p>";
+                document.getElementById("search-selection-controls").style.display = "none";
+                isLoading = false;
             });
-            // Show selection controls when cards are displayed
-            document.getElementById("search-selection-controls").style.display = "block";
-          } else {
-            // Hide selection controls when no cards are displayed
-            document.getElementById("search-selection-controls").style.display = "none";
-          }
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-          answerBox.innerHTML = "<p>Error loading results</p>";
-          // Hide selection controls on error
-          document.getElementById("search-selection-controls").style.display = "none";
-        });
     }
 
     function answerBoxTemplate(id, title, descr) {
@@ -546,7 +589,7 @@
       document.getElementById("search-trainer-btn").classList.toggle("selected-tab", mode === "trainer");
       const title = document.getElementById("filter-text-val").value.trim();
       if (title !== "") {
-        filterText();
+        performSearch();
       }
     }
 
@@ -558,28 +601,46 @@
       const modalCardHP = document.getElementById('modalCardHP');
       const modalCardType = document.getElementById('modalCardType');
       const modalCardSimilarity = document.getElementById('modalCardSimilarity');
+      const modalCardTags = document.getElementById('modalCardTags');
 
       // Use the same image URL format as in answerBoxTemplate
       const [setId, cardNumber] = cardId.split("-");
       modalImg.src = `https://images.pokemontcg.io/${setId}/${cardNumber}.png`;
       modalCardName.textContent = cardTitle;
 
-      // Fetch card details from the server
-      fetch(`/card_details/${cardId}`)
+      // Get current search query
+      const searchQuery = document.getElementById('filter-text-val').value.trim();
+
+      // Fetch card details from the server with the search query
+      fetch(`/card_details/${cardId}?query=${encodeURIComponent(searchQuery)}`)
         .then(response => response.json())
         .then(data => {
           modalCardHP.textContent = data.hp || 'N/A';
           modalCardType.textContent = data.types ? data.types.join(', ') : 'N/A';
           modalCardSimilarity.textContent = data.similarity_score || 'N/A';
+          
+          // Update tags
+          modalCardTags.innerHTML = '';
+          if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
+            data.tags.forEach(tag => {
+              const tagElement = document.createElement('span');
+              tagElement.className = 'tag';
+              tagElement.textContent = tag;
+              modalCardTags.appendChild(tagElement);
+            });
+          } else {
+            modalCardTags.innerHTML = '<span class="tag">No tags available</span>';
+          }
         })
         .catch(error => {
-          console.error('Error fetching card details:', error);
+          console.error('Error:', error);
           modalCardHP.textContent = 'N/A';
           modalCardType.textContent = 'N/A';
           modalCardSimilarity.textContent = 'N/A';
+          modalCardTags.innerHTML = '<span class="tag">Error loading tags</span>';
         });
 
-      modal.style.display = 'flex';
+      modal.style.display = 'block';
     }
 
     function closeCardModal() {
